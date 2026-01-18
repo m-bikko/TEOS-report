@@ -38,10 +38,12 @@ export async function syncData() {
                 branchAddress: row['Branch Address'],
                 date: row['Date'],
                 production: Number(row['Production'] || 0),
+                tariffType: String(row['Tariff Type']),
             }))
-            .filter((r) => r.company && r.date);
+            // Filter: Company exists, Date exists, AND Tariff Type is "1"
+            .filter((r) => r.company && r.date && r.tariffType === '1');
 
-        console.log(`[Sync] Parsed ${records.length} valid records. Update strategy: Full Replace.`);
+        console.log(`[Sync] Parsed ${records.length} valid records (Tariff Type = 1). Update strategy: Full Replace.`);
 
         // Strategy: Full replacement ensures no stale data if records are deleted upstream.
         // For larger scales, upsert or diffing would be better, but for ~30k, this is acceptable and safest.

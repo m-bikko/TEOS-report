@@ -23,6 +23,7 @@ const ShiftSchema: Schema = new Schema({
     branchAddress: { type: String, required: false },
     date: { type: String, required: true },
     production: { type: Number, required: true, default: 0 },
+    tariffType: { type: String, required: false }, // "1", "2" etc.
 }, {
     timestamps: true,
 });
