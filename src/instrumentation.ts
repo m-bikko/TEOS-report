@@ -12,6 +12,8 @@ export async function register() {
         cron.schedule('0 0 * * *', async () => {
             console.log('[Cron] Running scheduled daily sync...');
             await syncData();
+        }, {
+            timezone: "Asia/Almaty"
         });
 
         // Optional: Run once on startup to ensure data exists?
