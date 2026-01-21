@@ -13,11 +13,15 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   const [filters, setFilters] = useState<FilterState>({
-    dateRange: { from: undefined, to: undefined },
+    dateRange: {
+      from: new Date(2025, 0, 1), // Jan 1, 2025
+      to: new Date()
+    },
     company: "all",
     city: "all",
-    address: "all"
-  })
+    address: "all",
+    tariffType: "all"
+  });
 
   useEffect(() => {
     async function loadData() {
