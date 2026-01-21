@@ -26,6 +26,7 @@ export async function GET(request: Request) {
             branchAddress: doc.branchAddress,
             date: doc.date,
             production: doc.production,
+            tariffType: doc.tariffType,
         }));
 
         return NextResponse.json(data);
