@@ -8,6 +8,7 @@ export interface IShift extends Document {
     branchAddress: string;
     date: string; // YYYY-MM-DD
     production: number; // Hours
+    tariffType?: string;
     updatedAt: Date;
 }
 

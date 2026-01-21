@@ -5,15 +5,18 @@ import { Users, Clock, CalendarDays, Briefcase } from "lucide-react";
 
 interface KPIGridProps {
     stats: KPIStats;
+    metricMode?: "hours" | "volume";
 }
 
-export function KPIGrid({ stats }: KPIGridProps) {
+export function KPIGrid({ stats, metricMode = "hours" }: KPIGridProps) {
+    const isHours = metricMode === 'hours';
+
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                        Общее к-во часов
+                        {isHours ? "Общее к-во часов" : "Общий объем"}
                     </CardTitle>
                     <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
@@ -43,7 +46,7 @@ export function KPIGrid({ stats }: KPIGridProps) {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                        Ср. часов в день
+                        {isHours ? "Ср. часов в день" : "Ср. объем в день"}
                     </CardTitle>
                     <CalendarDays className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
@@ -70,10 +73,10 @@ export function KPIGrid({ stats }: KPIGridProps) {
                 </CardContent>
             </Card>
 
-            <Card>
+            <Card className="md:col-span-2 lg:col-span-1">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
-                        Ср. часов за смену
+                        {isHours ? "Ср. часов за смену" : "Ср. объем за смену"}
                     </CardTitle>
                     <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>

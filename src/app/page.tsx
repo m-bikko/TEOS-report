@@ -23,6 +23,8 @@ export default function DashboardPage() {
     tariffType: "all"
   });
 
+  const [metricMode, setMetricMode] = useState<"hours" | "volume">("hours");
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -37,9 +39,23 @@ export default function DashboardPage() {
     loadData()
   }, [])
 
+
+
   const filteredData = useMemo(() => {
-    return filterData(data, filters)
-  }, [data, filters])
+    // 1. Basic Filters
+    const basicFiltered = filterData(data, filters);
+
+    // 2. Metric Mode Filter
+    // "Hours" -> only TariffType 1
+    // "Volume" -> everything EXCEPT TariffType 1
+    return basicFiltered.filter(d => {
+      if (metricMode === 'hours') {
+        return String(d.tariffType) === '1';
+      } else {
+        return String(d.tariffType) !== '1';
+      }
+    });
+  }, [data, filters, metricMode])
 
   const stats = useMemo(() => {
     return calculateKPIs(filteredData)
@@ -68,16 +84,18 @@ export default function DashboardPage() {
           data={data}
           filters={filters}
           onFilterChange={setFilters}
+          metricMode={metricMode}
+          onMetricModeChange={setMetricMode}
         />
 
-        <KPIGrid stats={stats} />
+        <KPIGrid stats={stats} metricMode={metricMode} />
 
         <div className="grid gap-4">
-          <ChartsSection data={filteredData} />
+          <ChartsSection data={filteredData} metricMode={metricMode} />
         </div>
 
         <div className="text-xs text-muted-foreground mt-8 text-center">
-          Всего записей: {filteredData.length} из {data.length}
+          Всего записей: {filteredData.length} (из {data.length})
         </div>
       </div>
     </div>

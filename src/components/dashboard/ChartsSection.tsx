@@ -8,11 +8,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 
 interface ChartsSectionProps {
     data: ShiftRecord[];
+    metricMode?: "hours" | "volume";
 }
 
-export function ChartsSection({ data }: ChartsSectionProps) {
+export function ChartsSection({ data, metricMode = "hours" }: ChartsSectionProps) {
     const peopleData = aggregateByDayAndCompany(data, 'people');
     const hoursData = aggregateByDayAndCompany(data, 'hours');
+    const isHours = metricMode === 'hours';
 
     // Hardcoded colors for companies (can be improved with a generator)
     const colors = [
@@ -89,7 +91,7 @@ export function ChartsSection({ data }: ChartsSectionProps) {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>График выработки</CardTitle>
+                <CardTitle>График {isHours ? "выработки (Часы)" : "объема (Выработка)"}</CardTitle>
                 <CardDescription>
                     Визуализация данных по дням и кампаниям
                 </CardDescription>
@@ -98,7 +100,7 @@ export function ChartsSection({ data }: ChartsSectionProps) {
                 <Tabs defaultValue="people" className="space-y-4">
                     <TabsList>
                         <TabsTrigger value="people">Люди (Количество)</TabsTrigger>
-                        <TabsTrigger value="hours">Часы (Отработка)</TabsTrigger>
+                        <TabsTrigger value="hours">{isHours ? "Часы (Отработка)" : "Объем (Единицы)"}</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="people" className="space-y-4">
@@ -106,7 +108,7 @@ export function ChartsSection({ data }: ChartsSectionProps) {
                     </TabsContent>
 
                     <TabsContent value="hours" className="space-y-4">
-                        {renderChart(hoursData, "Количество часов")}
+                        {renderChart(hoursData, isHours ? "Количество часов" : "Количество единиц")}
                     </TabsContent>
                 </Tabs>
             </CardContent>

@@ -26,9 +26,11 @@ interface FilterBarProps {
     data: ShiftRecord[];
     filters: FilterState;
     onFilterChange: (filters: FilterState) => void;
+    metricMode: "hours" | "volume";
+    onMetricModeChange: (mode: "hours" | "volume") => void;
 }
 
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronsUpDown, Clock, Package } from "lucide-react"
 import {
     Command,
     CommandEmpty,
@@ -37,8 +39,9 @@ import {
     CommandItem,
     CommandList,
 } from "@/components/ui/command"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-export function FilterBar({ data, filters, onFilterChange }: FilterBarProps) {
+export function FilterBar({ data, filters, onFilterChange, metricMode, onMetricModeChange }: FilterBarProps) {
     const companies = ["all", ...getUniqueValues(data, "company").map(String)];
     const cities = ["all", ...getUniqueValues(data, "branchCity").map(String)];
     const addresses = ["all", ...getUniqueValues(data, "branchAddress").map(String)];
@@ -227,6 +230,21 @@ export function FilterBar({ data, filters, onFilterChange }: FilterBarProps) {
                     />
                 </div>
 
+            </div>
+
+            <div className="flex justify-start border-t pt-4">
+                <Tabs value={metricMode} onValueChange={(v) => onMetricModeChange(v as "hours" | "volume")}>
+                    <TabsList>
+                        <TabsTrigger value="hours" className="flex items-center gap-2">
+                            <Clock className="w-4 h-4" />
+                            Часы (Тариф 1)
+                        </TabsTrigger>
+                        <TabsTrigger value="volume" className="flex items-center gap-2">
+                            <Package className="w-4 h-4" />
+                            Выработка (Остальные)
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
             </div>
         </div>
     )
