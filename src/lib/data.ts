@@ -9,6 +9,7 @@ export interface ShiftRecord {
     branchAddress: string;
     date: string; // YYYY-MM-DD
     production: number; // Hours
+    tariffType?: string;
 }
 
 export interface FilterState {
@@ -19,6 +20,7 @@ export interface FilterState {
     company: string; // "all" or specific
     city: string; // "all" or specific
     address: string; // "all" or specific
+    tariffType: string; // "all" or specific
 }
 
 export interface KPIStats {
@@ -73,6 +75,12 @@ export const filterData = (data: ShiftRecord[], filters: FilterState) => {
 
         // Address Filter
         if (filters.address !== 'all' && record.branchAddress !== filters.address) return false;
+
+        // Tariff Type Filter
+        if (filters.tariffType && filters.tariffType !== 'all') {
+            // Compare as strings to be safe
+            if (String(record.tariffType) !== filters.tariffType) return false;
+        }
 
         return true;
     });
