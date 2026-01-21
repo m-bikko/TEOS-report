@@ -14,7 +14,7 @@ export default function DashboardPage() {
 
   const [filters, setFilters] = useState<FilterState>({
     dateRange: {
-      from: new Date(2025, 0, 1), // Jan 1, 2025
+      from: new Date(new Date().getFullYear(), 0, 1), // Jan 1 of Current Year
       to: new Date()
     },
     company: "all",
