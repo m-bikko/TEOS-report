@@ -9,6 +9,8 @@ export interface IShift extends Document {
     date: string; // YYYY-MM-DD
     production: number; // Hours
     tariffType?: string;
+    workCost?: number;
+    workCostClient?: number;
     updatedAt: Date;
 }
 
@@ -25,6 +27,8 @@ const ShiftSchema: Schema = new Schema({
     date: { type: String, required: true },
     production: { type: Number, required: true, default: 0 },
     tariffType: { type: String, required: false }, // "1", "2" etc.
+    workCost: { type: Number, required: false, default: 0 },
+    workCostClient: { type: Number, required: false, default: 0 },
 }, {
     timestamps: true,
 });

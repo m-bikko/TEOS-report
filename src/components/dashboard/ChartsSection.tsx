@@ -14,6 +14,7 @@ interface ChartsSectionProps {
 export function ChartsSection({ data, metricMode = "hours" }: ChartsSectionProps) {
     const peopleData = aggregateByDayAndCompany(data, 'people');
     const hoursData = aggregateByDayAndCompany(data, 'hours');
+    const marginData = aggregateByDayAndCompany(data, 'margin');
     const isHours = metricMode === 'hours';
 
     // Hardcoded colors for companies (can be improved with a generator)
@@ -101,6 +102,7 @@ export function ChartsSection({ data, metricMode = "hours" }: ChartsSectionProps
                     <TabsList>
                         <TabsTrigger value="people">Люди (Количество)</TabsTrigger>
                         <TabsTrigger value="hours">{isHours ? "Часы (Отработка)" : "Объем (Единицы)"}</TabsTrigger>
+                        <TabsTrigger value="margin">Маржа (Тенге)</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="people" className="space-y-4">
@@ -109,6 +111,10 @@ export function ChartsSection({ data, metricMode = "hours" }: ChartsSectionProps
 
                     <TabsContent value="hours" className="space-y-4">
                         {renderChart(hoursData, isHours ? "Количество часов" : "Количество единиц")}
+                    </TabsContent>
+
+                    <TabsContent value="margin" className="space-y-4">
+                        {renderChart(marginData, "Маржинальность")}
                     </TabsContent>
                 </Tabs>
             </CardContent>

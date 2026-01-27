@@ -27,6 +27,8 @@ export async function GET(request: Request) {
             date: doc.date,
             production: doc.production,
             tariffType: doc.tariffType,
+            workCost: doc.workCost,
+            workCostClient: doc.workCostClient,
         }));
 
         return NextResponse.json(data);

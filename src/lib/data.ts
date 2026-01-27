@@ -10,6 +10,8 @@ export interface ShiftRecord {
     date: string; // YYYY-MM-DD
     production: number; // Hours
     tariffType?: string;
+    workCost?: number;
+    workCostClient?: number;
 }
 
 export interface FilterState {
@@ -29,6 +31,12 @@ export interface KPIStats {
     avgHoursPerDay: number;
     avgHoursPerShift: number;
     avgPeoplePerDay: number;
+    totalMargin: number;
+    avgMarginPerDay: number;
+    avgMarginPerShift: number;
+    totalCost: number;
+    totalRevenue: number;
+    marginPercentage: number;
 }
 
 export interface ChartDataPoint {
@@ -94,11 +102,39 @@ export const calculateKPIs = (data: ShiftRecord[]): KPIStats => {
             avgHoursPerDay: 0,
             avgHoursPerShift: 0,
             avgPeoplePerDay: 0,
+            totalMargin: 0,
+            avgMarginPerDay: 0,
+            avgMarginPerShift: 0,
+            totalCost: 0,
+            totalRevenue: 0,
+            marginPercentage: 0,
         };
     }
 
     const totalHours = data.reduce((sum, r) => sum + r.production, 0);
     const totalShifts = data.length;
+
+    if (data.length > 0) {
+        console.log('[Frontend] First record sample:', data[0]);
+    }
+
+    // Margin Calculation: (Client Cost - Work Cost) * Production
+    // Revenue: Client Cost * Production
+    // Cost: Work Cost * Production
+
+    let totalMargin = 0;
+    let totalRevenue = 0;
+    let totalCost = 0;
+
+    data.forEach(r => {
+        const costClient = r.workCostClient || 0;
+        const costWork = r.workCost || 0;
+        const prod = r.production || 0;
+
+        totalRevenue += costClient * prod;
+        totalCost += costWork * prod;
+        totalMargin += (costClient - costWork) * prod;
+    });
 
     // Unique days in the dataset
     const uniqueDays = new Set(data.map(r => r.date)).size;
@@ -107,16 +143,27 @@ export const calculateKPIs = (data: ShiftRecord[]): KPIStats => {
     const avgHoursPerShift = totalShifts > 0 ? totalHours / totalShifts : 0;
     const avgPeoplePerDay = uniqueDays > 0 ? totalShifts / uniqueDays : 0;
 
+    const avgMarginPerDay = uniqueDays > 0 ? totalMargin / uniqueDays : 0;
+    const avgMarginPerShift = totalShifts > 0 ? totalMargin / totalShifts : 0;
+
+    const marginPercentage = totalRevenue > 0 ? (totalMargin * 100) / totalRevenue : 0;
+
     return {
         totalHours,
         totalShifts,
         avgHoursPerDay,
         avgHoursPerShift,
         avgPeoplePerDay,
+        totalMargin,
+        avgMarginPerDay,
+        avgMarginPerShift,
+        totalCost,
+        totalRevenue,
+        marginPercentage,
     };
 };
 
-export const aggregateByDayAndCompany = (data: ShiftRecord[], metric: 'people' | 'hours') => {
+export const aggregateByDayAndCompany = (data: ShiftRecord[], metric: 'people' | 'hours' | 'margin') => {
     // Group by Date -> Company -> Value
     const grouped: Record<string, Record<string, number>> = {};
     const allCompanies = new Set<string>();
@@ -154,6 +201,12 @@ export const aggregateByDayAndCompany = (data: ShiftRecord[], metric: 'people' |
         if (metric === 'people') {
             if (!tempGrouping[record.date][record.company]) tempGrouping[record.date][record.company] = new Set();
             (tempGrouping[record.date][record.company] as Set<string>).add(record.userId);
+        } else if (metric === 'margin') {
+            if (!tempGrouping[record.date][record.company]) tempGrouping[record.date][record.company] = 0;
+            const costClient = record.workCostClient || 0;
+            const costWork = record.workCost || 0;
+            const margin = (costClient - costWork) * record.production;
+            (tempGrouping[record.date][record.company] as number) += margin;
         } else {
             if (!tempGrouping[record.date][record.company]) tempGrouping[record.date][record.company] = 0;
             (tempGrouping[record.date][record.company] as number) += record.production;

@@ -30,6 +30,11 @@ export async function syncData() {
             console.warn('[Sync] CSV Parsing encountered errors:', parsed.errors[0]);
         }
 
+        if (parsed.data.length > 0) {
+            console.log('[Sync] First row keys:', Object.keys(parsed.data[0] as object));
+            console.log('[Sync] First row sample:', parsed.data[0]);
+        }
+
         const records = parsed.data
             .map((row: any) => ({
                 userId: String(row['User ID']),
@@ -39,6 +44,8 @@ export async function syncData() {
                 date: row['Date'],
                 production: Number(row['Production'] || 0),
                 tariffType: String(row['Tariff Type']),
+                workCost: Number(row['Work Cost'] || 0),
+                workCostClient: Number(row['Work Cost Client'] || 0),
             }))
             // Filter: Company exists and Date exists
             .filter((r) => r.company && r.date);
