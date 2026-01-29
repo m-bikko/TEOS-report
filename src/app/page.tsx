@@ -6,8 +6,10 @@ import { FilterBar } from "@/components/dashboard/FilterBar"
 import { KPIGrid } from "@/components/dashboard/KPIGrid"
 import { ChartsSection } from "@/components/dashboard/ChartsSection"
 import { ShiftRecord, FilterState, fetchAndParseData, filterData, calculateKPIs } from "@/lib/data"
-import { Loader2, RefreshCw } from "lucide-react"
+import { Loader2, RefreshCw, Users, Activity } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { UsersView } from "@/components/dashboard/UsersView"
 
 export default function DashboardPage() {
   const [data, setData] = useState<ShiftRecord[]>([])
@@ -26,11 +28,21 @@ export default function DashboardPage() {
 
   /* State */
   const [metricMode, setMetricMode] = useState<"hours" | "volume">("hours");
+
+  // Shifts Sync State
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
 
+  // Users State
+  const [activeTab, setActiveTab] = useState("shifts");
+  const [usersData, setUsersData] = useState<any>(null);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [isSyncingUsers, setIsSyncingUsers] = useState(false);
+  const [syncProgressUsers, setSyncProgressUsers] = useState(0);
+
   const loadData = async () => {
-    setLoading(true)
+    // Only set main loading if no data yet
+    if (data.length === 0) setLoading(true)
     try {
       const records = await fetchAndParseData()
       setData(records)
@@ -41,9 +53,51 @@ export default function DashboardPage() {
     }
   }
 
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const res = await fetch('/api/analytics/users');
+      if (res.ok) {
+        const uData = await res.json();
+        setUsersData(uData);
+      }
+    } catch (e) {
+      console.error("Failed to load users", e);
+    } finally {
+      setUsersLoading(false);
+    }
+  }
+
   useEffect(() => {
-    loadData()
+    loadData();
+    loadUsers();
   }, [])
+
+  const handleSyncUsers = async () => {
+    setIsSyncingUsers(true);
+    setSyncProgressUsers(0);
+    // Fake progress simulation
+    const interval = setInterval(() => {
+      setSyncProgressUsers((prev) => {
+        if (prev >= 90) return prev;
+        return prev + 10;
+      });
+    }, 500);
+
+    try {
+      await fetch('/api/analytics/users?sync=true');
+      clearInterval(interval);
+      setSyncProgressUsers(100);
+      await new Promise(r => setTimeout(r, 500));
+      await loadUsers();
+    } catch (e) {
+      console.error("Users Sync failed", e);
+    } finally {
+      clearInterval(interval);
+      setIsSyncingUsers(false);
+      setSyncProgressUsers(0);
+    }
+  }
 
   const handleSync = async () => {
     setIsSyncing(true);
@@ -109,61 +163,118 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight">Аналитика смен и выработки</h1>
-            <p className="text-muted-foreground">
-              Визуализация отчетов по сотрудникам, часам и объектам.
-            </p>
-          </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col space-y-2">
+              <h1 className="text-3xl font-bold tracking-tight">Аналитика TEOS</h1>
+              <div className="flex items-center gap-2">
+                <TabsList>
+                  <TabsTrigger value="shifts" className="flex items-center gap-2">
+                    <Activity className="w-4 h-4" />
+                    Смены и Выработка
+                  </TabsTrigger>
+                  <TabsTrigger value="users" className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Пользователи
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
 
-          <div className="flex flex-col items-end gap-2 w-[200px]">
-            <Button
-              variant="default"
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="w-full"
-            >
-              {isSyncing ? (
+            <div className="flex flex-col items-end gap-2 w-[200px]">
+              {activeTab === 'shifts' ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Обновление...
+                  <Button
+                    variant="default"
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className="w-full"
+                  >
+                    {isSyncing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Обновление смен...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Обновить смены
+                      </>
+                    )}
+                  </Button>
+                  {isSyncing && (
+                    <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-primary h-full transition-all duration-500 ease-in-out"
+                        style={{ width: `${syncProgress}%` }}
+                      />
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Обновить базу
+                  <Button
+                    variant="default"
+                    onClick={handleSyncUsers}
+                    disabled={isSyncingUsers}
+                    className="w-full"
+                  >
+                    {isSyncingUsers ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Обновление юзеров...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Обновить юзеров
+                      </>
+                    )}
+                  </Button>
+                  {isSyncingUsers && (
+                    <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-primary h-full transition-all duration-500 ease-in-out"
+                        style={{ width: `${syncProgressUsers}%` }}
+                      />
+                    </div>
+                  )}
                 </>
               )}
-            </Button>
-            {isSyncing && (
-              <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-primary h-full transition-all duration-500 ease-in-out"
-                  style={{ width: `${syncProgress}%` }}
-                />
-              </div>
-            )}
+
+            </div>
           </div>
-        </div>
 
-        <FilterBar
-          data={data}
-          filters={filters}
-          onFilterChange={setFilters}
-          metricMode={metricMode}
-          onMetricModeChange={setMetricMode}
-        />
+          <TabsContent value="shifts" className="space-y-6">
+            <div className="flex flex-col space-y-2 mb-4">
+              <p className="text-muted-foreground">
+                Визуализация отчетов по сотрудникам, часам и объектам.
+              </p>
+            </div>
 
-        <KPIGrid stats={stats} metricMode={metricMode} />
+            <FilterBar
+              data={data}
+              filters={filters}
+              onFilterChange={setFilters}
+              metricMode={metricMode}
+              onMetricModeChange={setMetricMode}
+            />
 
-        <div className="grid gap-4">
-          <ChartsSection data={filteredData} metricMode={metricMode} />
-        </div>
+            <KPIGrid stats={stats} metricMode={metricMode} />
 
-        <div className="text-xs text-muted-foreground mt-8 text-center">
-          Всего записей: {filteredData.length} (из {data.length})
-        </div>
+            <div className="grid gap-4">
+              <ChartsSection data={filteredData} metricMode={metricMode} />
+            </div>
+
+            <div className="text-xs text-muted-foreground mt-8 text-center">
+              Всего записей: {filteredData.length} (из {data.length})
+            </div>
+          </TabsContent>
+
+          <TabsContent value="users" className="space-y-6">
+            <UsersView data={usersData} loading={usersLoading} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   )

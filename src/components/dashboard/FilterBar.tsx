@@ -1,8 +1,7 @@
-
 "use client"
 
 import * as React from "react"
-import { CalendarIcon } from "lucide-react"
+import { CalendarIcon, Check, ChevronsUpDown, Clock, Package } from "lucide-react"
 import { format } from "date-fns"
 import { ru } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -21,16 +20,6 @@ import {
 } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { FilterState, ShiftRecord, getUniqueValues } from "@/lib/data"
-
-interface FilterBarProps {
-    data: ShiftRecord[];
-    filters: FilterState;
-    onFilterChange: (filters: FilterState) => void;
-    metricMode: "hours" | "volume";
-    onMetricModeChange: (mode: "hours" | "volume") => void;
-}
-
-import { Check, ChevronsUpDown, Clock, Package } from "lucide-react"
 import {
     Command,
     CommandEmpty,
@@ -41,7 +30,16 @@ import {
 } from "@/components/ui/command"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-export function FilterBar({ data, filters, onFilterChange, metricMode, onMetricModeChange }: FilterBarProps) {
+interface FilterBarProps {
+    data: ShiftRecord[];
+    filters: FilterState;
+    onFilterChange: (filters: FilterState) => void;
+    metricMode?: "hours" | "volume";
+    onMetricModeChange?: (mode: "hours" | "volume") => void;
+    mode?: "shifts" | "users";
+}
+
+export function FilterBar({ data, filters, onFilterChange, metricMode, onMetricModeChange, mode = "shifts" }: FilterBarProps) {
     const companies = ["all", ...getUniqueValues(data, "company").map(String)];
     const cities = ["all", ...getUniqueValues(data, "branchCity").map(String)];
     const addresses = ["all", ...getUniqueValues(data, "branchAddress").map(String)];
@@ -120,7 +118,7 @@ export function FilterBar({ data, filters, onFilterChange, metricMode, onMetricM
         <div className="flex flex-col gap-4 p-4 border rounded-lg bg-card text-card-foreground shadow-sm">
             <div className="flex flex-wrap gap-4 items-end">
 
-                {/* Date Range Picker */}
+                {/* Date Range Picker - Always Visible */}
                 <div className="flex flex-col gap-2">
                     <span className="text-sm font-medium">Период</span>
                     <div className="flex gap-2">
@@ -182,70 +180,72 @@ export function FilterBar({ data, filters, onFilterChange, metricMode, onMetricM
                     </div>
                 </div>
 
-                {/* Company Filter */}
-                <div className="flex flex-col gap-2 w-[200px] sm:w-[300px]">
-                    <span className="text-sm font-medium">Кампания</span>
-                    <ComboboxFilter
-                        value={filters.company}
-                        options={companies}
-                        placeholder="Все кампании"
-                        searchPlaceholder="Поиск кампании..."
-                        onChange={(val) => updateFilter("company", val)}
-                    />
-                </div>
+                {/* Other Filters - Only for Shifts */}
+                {mode === 'shifts' && (
+                    <>
+                        <div className="flex flex-col gap-2 w-[200px] sm:w-[300px]">
+                            <span className="text-sm font-medium">Кампания</span>
+                            <ComboboxFilter
+                                value={filters.company}
+                                options={companies}
+                                placeholder="Все кампании"
+                                searchPlaceholder="Поиск кампании..."
+                                onChange={(val) => updateFilter("company", val)}
+                            />
+                        </div>
 
-                {/* City Filter */}
-                <div className="flex flex-col gap-2 w-[150px] sm:w-[200px]">
-                    <span className="text-sm font-medium">Город</span>
-                    <ComboboxFilter
-                        value={filters.city}
-                        options={cities}
-                        placeholder="Все города"
-                        searchPlaceholder="Поиск города..."
-                        onChange={(val) => updateFilter("city", val)}
-                    />
-                </div>
+                        <div className="flex flex-col gap-2 w-[150px] sm:w-[200px]">
+                            <span className="text-sm font-medium">Город</span>
+                            <ComboboxFilter
+                                value={filters.city}
+                                options={cities}
+                                placeholder="Все города"
+                                searchPlaceholder="Поиск города..."
+                                onChange={(val) => updateFilter("city", val)}
+                            />
+                        </div>
 
-                {/* Address Filter */}
-                <div className="flex flex-col gap-2 w-[200px] sm:w-[300px]">
-                    <span className="text-sm font-medium">Адрес Филлиала</span>
-                    <ComboboxFilter
-                        value={filters.address}
-                        options={addresses}
-                        placeholder="Все адреса"
-                        searchPlaceholder="Поиск адреса..."
-                        onChange={(val) => updateFilter("address", val)}
-                    />
-                </div>
+                        <div className="flex flex-col gap-2 w-[200px] sm:w-[300px]">
+                            <span className="text-sm font-medium">Адрес Филлиала</span>
+                            <ComboboxFilter
+                                value={filters.address}
+                                options={addresses}
+                                placeholder="Все адреса"
+                                searchPlaceholder="Поиск адреса..."
+                                onChange={(val) => updateFilter("address", val)}
+                            />
+                        </div>
 
-                {/* Tariff Type Filter */}
-                <div className="flex flex-col gap-2 w-[150px] sm:w-[200px]">
-                    <span className="text-sm font-medium">Тип Тарифа</span>
-                    <ComboboxFilter
-                        value={filters.tariffType || "all"}
-                        options={["all", ...getUniqueValues(data, "tariffType").map(String)]}
-                        placeholder="Все типы"
-                        searchPlaceholder="Поиск типа..."
-                        onChange={(val) => updateFilter("tariffType", val)}
-                    />
-                </div>
-
+                        <div className="flex flex-col gap-2 w-[150px] sm:w-[200px]">
+                            <span className="text-sm font-medium">Тип Тарифа</span>
+                            <ComboboxFilter
+                                value={filters.tariffType || "all"}
+                                options={["all", ...getUniqueValues(data, "tariffType").map(String)]}
+                                placeholder="Все типы"
+                                searchPlaceholder="Поиск типа..."
+                                onChange={(val) => updateFilter("tariffType", val)}
+                            />
+                        </div>
+                    </>
+                )}
             </div>
 
-            <div className="flex justify-start border-t pt-4">
-                <Tabs value={metricMode} onValueChange={(v) => onMetricModeChange(v as "hours" | "volume")}>
-                    <TabsList>
-                        <TabsTrigger value="hours" className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            Часы (Тариф 1)
-                        </TabsTrigger>
-                        <TabsTrigger value="volume" className="flex items-center gap-2">
-                            <Package className="w-4 h-4" />
-                            Выработка (Остальные)
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
-            </div>
+            {mode === 'shifts' && metricMode && onMetricModeChange && (
+                <div className="flex justify-start border-t pt-4">
+                    <Tabs value={metricMode} onValueChange={(v) => onMetricModeChange(v as "hours" | "volume")}>
+                        <TabsList>
+                            <TabsTrigger value="hours" className="flex items-center gap-2">
+                                <Clock className="w-4 h-4" />
+                                Часы (Тариф 1)
+                            </TabsTrigger>
+                            <TabsTrigger value="volume" className="flex items-center gap-2">
+                                <Package className="w-4 h-4" />
+                                Выработка (Остальные)
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
+                </div>
+            )}
         </div>
     )
 }
