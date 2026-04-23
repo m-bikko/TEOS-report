@@ -6,7 +6,8 @@ import { FilterBar } from "@/components/dashboard/FilterBar"
 import { KPIGrid } from "@/components/dashboard/KPIGrid"
 import { ChartsSection } from "@/components/dashboard/ChartsSection"
 import { ShiftRecord, FilterState, fetchAndParseData, filterData, calculateKPIs } from "@/lib/data"
-import { Loader2, RefreshCw, Users, Activity } from "lucide-react"
+import { Loader2, RefreshCw, Users, Activity, BarChart3 } from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { UsersView } from "@/components/dashboard/UsersView"
@@ -166,7 +167,15 @@ export default function DashboardPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex flex-col space-y-2">
-              <h1 className="text-3xl font-bold tracking-tight">Аналитика TEOS</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold tracking-tight">Аналитика TEOS</h1>
+                <Link
+                  href="/v2"
+                  className="text-xs px-2 py-1 rounded border border-primary/50 text-primary hover:bg-primary/10 flex items-center gap-1"
+                >
+                  <BarChart3 className="w-3 h-3" /> V2 (CSV)
+                </Link>
+              </div>
               <div className="flex items-center gap-2">
                 <TabsList>
                   <TabsTrigger value="shifts" className="flex items-center gap-2">
