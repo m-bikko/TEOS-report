@@ -1,3 +1,5 @@
+export const FLAT_HOURS_PER_SHIFT = 9;
+
 export const SHIFT_STATUS: Record<number, string> = {
     1: "В работе",
     2: "В наборе",

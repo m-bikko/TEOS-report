@@ -26,12 +26,12 @@ import { DimensionOption, BranchDimensionOption } from "@/lib/v2/types";
 export interface FilterState {
     from: string | null;
     to: string | null;
-    partnerId: number | null;
-    cityId: number | null;
-    companyId: number | null;
-    branchId: number | null;
-    tariffId: number | null;
-    professionId: number | null;
+    partnerIds: number[];
+    cityIds: number[];
+    companyIds: number[];
+    branchIds: number[];
+    tariffIds: number[];
+    professionIds: number[];
     shiftStatuses: number[];
 }
 
@@ -64,18 +64,38 @@ interface FilterBarV2Props {
     onChange: (next: FilterState) => void;
 }
 
-interface ComboProps {
+interface MultiComboProps {
     label: string;
-    value: number | null;
+    values: number[];
     options: DimensionOption[];
-    onChange: (id: number | null) => void;
+    onChange: (ids: number[]) => void;
     disabled?: boolean;
     width?: string;
 }
 
-function Combo({ label, value, options, onChange, disabled, width = "w-[220px]" }: ComboProps) {
+function MultiCombo({ label, values, options, onChange, disabled, width = "w-[220px]" }: MultiComboProps) {
     const [open, setOpen] = React.useState(false);
-    const selected = value != null ? options.find((o) => o.id === value) : null;
+
+    const selectedOptions = React.useMemo(
+        () => options.filter((o) => values.includes(o.id)),
+        [options, values],
+    );
+
+    const display = React.useMemo(() => {
+        if (selectedOptions.length === 0) return null;
+        if (selectedOptions.length === 1) return selectedOptions[0].label;
+        if (selectedOptions.length <= 3) return selectedOptions.map((o) => o.label).join(", ");
+        return `Выбрано: ${selectedOptions.length}`;
+    }, [selectedOptions]);
+
+    const toggle = (id: number) => {
+        if (values.includes(id)) onChange(values.filter((x) => x !== id));
+        else onChange([...values, id]);
+    };
+
+    const clear = () => {
+        onChange([]);
+    };
 
     return (
         <div className="flex flex-col gap-1">
@@ -88,14 +108,14 @@ function Combo({ label, value, options, onChange, disabled, width = "w-[220px]" 
                         variant="outline"
                         size="sm"
                         disabled={disabled}
-                        title={selected?.label}
+                        title={selectedOptions.map((o) => o.label).join(", ") || undefined}
                         className={cn(
                             width,
                             "justify-between min-h-8 h-auto py-1 font-normal whitespace-normal text-left items-start",
                         )}
                     >
                         <span className="text-left flex-1 leading-tight break-words">
-                            {selected ? selected.label : <span className="text-muted-foreground">Все</span>}
+                            {display ?? <span className="text-muted-foreground">Все</span>}
                         </span>
                         <ChevronsUpDown className="ml-1 mt-0.5 h-3.5 w-3.5 shrink-0 opacity-50" />
                     </Button>
@@ -108,41 +128,58 @@ function Combo({ label, value, options, onChange, disabled, width = "w-[220px]" 
                             <CommandGroup>
                                 <CommandItem
                                     value="__all__"
-                                    onSelect={() => {
-                                        onChange(null);
-                                        setOpen(false);
-                                    }}
+                                    onSelect={clear}
                                     className="items-start"
                                 >
-                                    <Check className={cn("mr-2 mt-0.5 h-4 w-4 shrink-0", value === null ? "opacity-100" : "opacity-0")} />
-                                    <span>Все</span>
-                                </CommandItem>
-                                {options.map((o) => (
-                                    <CommandItem
-                                        key={o.id}
-                                        value={`${o.id}__${o.label}`}
-                                        onSelect={() => {
-                                            onChange(o.id);
-                                            setOpen(false);
-                                        }}
-                                        className="items-start"
+                                    <span
+                                        className={cn(
+                                            "mr-2 mt-0.5 h-4 w-4 shrink-0 rounded border flex items-center justify-center",
+                                            values.length === 0
+                                                ? "bg-primary border-primary text-primary-foreground"
+                                                : "border-input",
+                                        )}
                                     >
-                                        <Check
-                                            className={cn(
-                                                "mr-2 mt-0.5 h-4 w-4 shrink-0",
-                                                value === o.id ? "opacity-100" : "opacity-0",
-                                            )}
-                                        />
-                                        <div className="flex flex-col min-w-0 flex-1">
-                                            <span className="whitespace-normal break-words leading-snug">{o.label}</span>
-                                            {o.extra && (
-                                                <span className="text-xs text-muted-foreground whitespace-normal break-words leading-snug">
-                                                    {o.extra}
+                                        {values.length === 0 && <Check className="h-3 w-3" />}
+                                    </span>
+                                    <span>Все</span>
+                                    {values.length > 0 && (
+                                        <span className="ml-auto text-[11px] text-muted-foreground">
+                                            снять {values.length}
+                                        </span>
+                                    )}
+                                </CommandItem>
+                                {options.map((o) => {
+                                    const checked = values.includes(o.id);
+                                    return (
+                                        <CommandItem
+                                            key={o.id}
+                                            value={`${o.id}__${o.label}`}
+                                            onSelect={() => toggle(o.id)}
+                                            className="items-start"
+                                        >
+                                            <span
+                                                className={cn(
+                                                    "mr-2 mt-0.5 h-4 w-4 shrink-0 rounded border flex items-center justify-center",
+                                                    checked
+                                                        ? "bg-primary border-primary text-primary-foreground"
+                                                        : "border-input",
+                                                )}
+                                            >
+                                                {checked && <Check className="h-3 w-3" />}
+                                            </span>
+                                            <div className="flex flex-col min-w-0 flex-1">
+                                                <span className="whitespace-normal break-words leading-snug">
+                                                    {o.label}
                                                 </span>
-                                            )}
-                                        </div>
-                                    </CommandItem>
-                                ))}
+                                                {o.extra && (
+                                                    <span className="text-xs text-muted-foreground whitespace-normal break-words leading-snug">
+                                                        {o.extra}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </CommandItem>
+                                    );
+                                })}
                             </CommandGroup>
                         </CommandList>
                     </Command>
@@ -196,36 +233,32 @@ export function FilterBarV2({ dimensions, filters, onChange }: FilterBarV2Props)
         onChange({ ...filters, [key]: value });
     };
 
-    const handleCompanyChange = (newCompanyId: number | null) => {
-        const next: FilterState = { ...filters, companyId: newCompanyId };
-        if (filters.branchId != null && dimensions) {
-            const branch = dimensions.branches.find((b) => b.id === filters.branchId);
-            if (branch && branch.companyId !== newCompanyId && newCompanyId != null) {
-                next.branchId = null;
-            }
+    const handleCompanyChange = (newCompanyIds: number[]) => {
+        const next: FilterState = { ...filters, companyIds: newCompanyIds };
+        if (filters.branchIds.length > 0 && dimensions && newCompanyIds.length > 0) {
+            const branchesById = new Map(dimensions.branches.map((b) => [b.id, b]));
+            next.branchIds = filters.branchIds.filter((bid) => {
+                const b = branchesById.get(bid);
+                return b?.companyId != null && newCompanyIds.includes(b.companyId);
+            });
         }
         onChange(next);
     };
 
-    const handleBranchChange = (newBranchId: number | null) => {
-        const next: FilterState = { ...filters, branchId: newBranchId };
-        if (newBranchId != null && dimensions) {
-            const branch = dimensions.branches.find((b) => b.id === newBranchId);
-            if (branch?.companyId != null) next.companyId = branch.companyId;
-        }
-        onChange(next);
+    const handleBranchChange = (newBranchIds: number[]) => {
+        onChange({ ...filters, branchIds: newBranchIds });
     };
 
     const reset = () => {
         onChange({
-            from: dimensions?.minDate ?? null,
-            to: dimensions?.maxDate ?? null,
-            partnerId: null,
-            cityId: null,
-            companyId: null,
-            branchId: null,
-            tariffId: null,
-            professionId: null,
+            from: "2026-01-01",
+            to: "2026-03-31",
+            partnerIds: [],
+            cityIds: [],
+            companyIds: [],
+            branchIds: [],
+            tariffIds: [],
+            professionIds: [],
             shiftStatuses: [],
         });
     };
@@ -242,7 +275,11 @@ export function FilterBarV2({ dimensions, filters, onChange }: FilterBarV2Props)
     const branchesDisabled = !dimensions?.hasBranches;
 
     const visibleBranches: DimensionOption[] = (dimensions?.branches ?? [])
-        .filter((b) => filters.companyId == null || b.companyId === filters.companyId)
+        .filter(
+            (b) =>
+                filters.companyIds.length === 0 ||
+                (b.companyId != null && filters.companyIds.includes(b.companyId)),
+        )
         .map((b) => ({ id: b.id, label: b.label, extra: b.extra }));
 
     const statusesActive = filters.shiftStatuses.length > 0;
@@ -252,51 +289,51 @@ export function FilterBarV2({ dimensions, filters, onChange }: FilterBarV2Props)
             <div className="container mx-auto px-4 py-3 flex flex-wrap items-end gap-3">
                 <DateInput label="С даты" value={filters.from} onChange={(v) => update("from", v)} />
                 <DateInput label="По дату" value={filters.to} onChange={(v) => update("to", v)} />
-                <Combo
+                <MultiCombo
                     label="Партнёр"
-                    value={filters.partnerId}
+                    values={filters.partnerIds}
                     options={dimensions?.partners ?? []}
-                    onChange={(v) => update("partnerId", v)}
+                    onChange={(v) => update("partnerIds", v)}
                 />
-                <Combo
+                <MultiCombo
                     label="Город"
-                    value={filters.cityId}
+                    values={filters.cityIds}
                     options={dimensions?.cities ?? []}
-                    onChange={(v) => update("cityId", v)}
+                    onChange={(v) => update("cityIds", v)}
                 />
-                <Combo
+                <MultiCombo
                     label={companiesDisabled ? "Компания (branches.csv не загружен)" : "Компания"}
-                    value={filters.companyId}
+                    values={filters.companyIds}
                     options={dimensions?.companies ?? []}
                     onChange={handleCompanyChange}
                     disabled={companiesDisabled}
                     width="w-[260px]"
                 />
-                <Combo
+                <MultiCombo
                     label={
                         branchesDisabled
                             ? "Точка (branches.csv не загружен)"
-                            : filters.companyId != null
+                            : filters.companyIds.length > 0
                                 ? `Точка (${visibleBranches.length})`
                                 : `Точка (все ${visibleBranches.length})`
                     }
-                    value={filters.branchId}
+                    values={filters.branchIds}
                     options={visibleBranches}
                     onChange={handleBranchChange}
                     disabled={branchesDisabled}
                     width="w-[260px]"
                 />
-                <Combo
+                <MultiCombo
                     label="Тариф"
-                    value={filters.tariffId}
+                    values={filters.tariffIds}
                     options={dimensions?.tariffs ?? []}
-                    onChange={(v) => update("tariffId", v)}
+                    onChange={(v) => update("tariffIds", v)}
                 />
-                <Combo
+                <MultiCombo
                     label="Профессия"
-                    value={filters.professionId}
+                    values={filters.professionIds}
                     options={dimensions?.professions ?? []}
-                    onChange={(v) => update("professionId", v)}
+                    onChange={(v) => update("professionIds", v)}
                     width="w-[160px]"
                 />
                 <Button variant="ghost" size="sm" onClick={reset} className="h-8 ml-auto">
@@ -356,12 +393,12 @@ export function filtersToQuery(filters: FilterState): string {
     const params = new URLSearchParams();
     if (filters.from) params.set("from", filters.from);
     if (filters.to) params.set("to", filters.to);
-    if (filters.partnerId != null) params.set("partner", String(filters.partnerId));
-    if (filters.cityId != null) params.set("city", String(filters.cityId));
-    if (filters.companyId != null) params.set("company", String(filters.companyId));
-    if (filters.branchId != null) params.set("branch", String(filters.branchId));
-    if (filters.tariffId != null) params.set("tariff", String(filters.tariffId));
+    if (filters.partnerIds.length > 0) params.set("partner", filters.partnerIds.join(","));
+    if (filters.cityIds.length > 0) params.set("city", filters.cityIds.join(","));
+    if (filters.companyIds.length > 0) params.set("company", filters.companyIds.join(","));
+    if (filters.branchIds.length > 0) params.set("branch", filters.branchIds.join(","));
+    if (filters.tariffIds.length > 0) params.set("tariff", filters.tariffIds.join(","));
+    if (filters.professionIds.length > 0) params.set("profession", filters.professionIds.join(","));
     if (filters.shiftStatuses.length > 0) params.set("status", filters.shiftStatuses.join(","));
-    if (filters.professionId != null) params.set("profession", String(filters.professionId));
     return params.toString();
 }

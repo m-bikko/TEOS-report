@@ -1,6 +1,7 @@
 import { Store } from "../store";
 import { V2Filters } from "../types";
 import { filterShifts, filterShiftUsers } from "../joins";
+import { FLAT_HOURS_PER_SHIFT } from "../enums";
 
 export interface OverviewKPIs {
     totalShifts: number;
@@ -21,8 +22,6 @@ export interface OverviewKPIs {
     flatAssignments: number;
     unknownTariffAssignments: number;
 }
-
-const FLAT_HOURS_PER_SHIFT = 8;
 
 export function computeOverview(store: Store, filters: V2Filters): OverviewKPIs {
     const shifts = filterShifts(store, filters);

@@ -156,12 +156,12 @@ export interface DateRange {
 export interface V2Filters {
     dateFrom: string | null;
     dateTo: string | null;
-    partnerId: number | null;
-    cityId: number | null;
-    companyId: number | null;
-    branchId: number | null;
-    tariffId: number | null;
-    professionId: number | null;
+    partnerIds: number[];
+    cityIds: number[];
+    companyIds: number[];
+    branchIds: number[];
+    tariffIds: number[];
+    professionIds: number[];
     shiftStatuses: number[];
 }
 

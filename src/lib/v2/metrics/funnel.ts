@@ -1,7 +1,7 @@
 import { Store } from "../store";
 import { V2Filters } from "../types";
 import { filterShiftUsers, filterShifts } from "../joins";
-import { SHIFT_STATUS, SHIFT_FUNNEL_ORDER } from "../enums";
+import { SHIFT_STATUS, SHIFT_FUNNEL_ORDER, FLAT_HOURS_PER_SHIFT } from "../enums";
 
 export interface DailyPlanFact {
     date: string;
@@ -57,8 +57,10 @@ export interface ProductionAdjustment {
 export interface FunnelResponse {
     shiftStatus: ShiftStatusBucket[];
     assignmentsByStatus: ShiftStatusBucket[];
+    hoursByStatus: ShiftStatusBucket[];
     timeline: ShiftStatusTimelinePoint[];
     assignmentTimeline: ShiftStatusTimelinePoint[];
+    hoursTimeline: ShiftStatusTimelinePoint[];
     completion: CompletionBucket[];
     payment: CompletionBucket[];
     funnel: FunnelStage[];
@@ -132,6 +134,8 @@ export function computeFunnel(store: Store, filters: V2Filters): FunnelResponse 
 
     const assignmentStatusCounts = new Map<number, number>();
     const assignmentTimelineMap = new Map<string, Map<number, number>>();
+    const hoursStatusCounts = new Map<number, number>();
+    const hoursTimelineMap = new Map<string, Map<number, number>>();
     const factByDay = new Map<string, number>();
     const costByDay = new Map<string, number>();
 
@@ -168,6 +172,23 @@ export function computeFunnel(store: Store, filters: V2Filters): FunnelResponse 
             const rate = r.tariff?.rate_for_company ?? 0;
             costByDay.set(day, (costByDay.get(day) ?? 0) + rate * r.shiftUser.production);
         }
+
+        const tariffType = r.tariff?.type ?? null;
+        let hours = 0;
+        if (tariffType === 1) hours = r.shiftUser.production;
+        else if (tariffType === 2 || tariffType === 3 || tariffType === 4) hours = FLAT_HOURS_PER_SHIFT;
+
+        if (hours > 0) {
+            hoursStatusCounts.set(s, (hoursStatusCounts.get(s) ?? 0) + hours);
+            if (day) {
+                let hoursDayMap = hoursTimelineMap.get(day);
+                if (!hoursDayMap) {
+                    hoursDayMap = new Map();
+                    hoursTimelineMap.set(day, hoursDayMap);
+                }
+                hoursDayMap.set(s, (hoursDayMap.get(s) ?? 0) + hours);
+            }
+        }
     }
 
     const payoutsByDay = new Map<string, number>();
@@ -190,6 +211,27 @@ export function computeFunnel(store: Store, filters: V2Filters): FunnelResponse 
     });
 
     const assignmentTimeline: ShiftStatusTimelinePoint[] = Array.from(assignmentTimelineMap.entries())
+        .map(([date, map]) => {
+            const byStatus: Record<number, number> = {};
+            let total = 0;
+            for (const [s, c] of map.entries()) {
+                byStatus[s] = c;
+                total += c;
+            }
+            return { date, byStatus, total };
+        })
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+    const hoursByStatus: ShiftStatusBucket[] = Object.keys(SHIFT_STATUS).map((key) => {
+        const code = Number(key);
+        return {
+            status: code,
+            label: SHIFT_STATUS[code] ?? `Код ${code}`,
+            count: Math.round(hoursStatusCounts.get(code) ?? 0),
+        };
+    });
+
+    const hoursTimeline: ShiftStatusTimelinePoint[] = Array.from(hoursTimelineMap.entries())
         .map(([date, map]) => {
             const byStatus: Record<number, number> = {};
             let total = 0;
@@ -248,8 +290,10 @@ export function computeFunnel(store: Store, filters: V2Filters): FunnelResponse 
     return {
         shiftStatus,
         assignmentsByStatus,
+        hoursByStatus,
         timeline,
         assignmentTimeline,
+        hoursTimeline,
         completion,
         payment,
         funnel,

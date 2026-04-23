@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Panel } from "./Panel";
 import { KpiCard } from "./KpiCard";
 import { fmtNumber, fmtPct, fmtMoney } from "./format";
+import { Period, PERIOD_LABELS, aggregateByPeriod, formatPeriodLabel } from "./period";
 import {
     BarChart,
     Bar,
@@ -29,9 +30,9 @@ import {
     PAYMENT_COLORS,
     POWER_BI_COLORS,
 } from "@/lib/v2/enums";
-import { Users, Activity, Clock } from "lucide-react";
+import { Users, Activity, Clock, Timer } from "lucide-react";
 
-type ViewMode = "shifts" | "executors";
+type ViewMode = "shifts" | "executors" | "hours";
 
 function CompactMetric({
     label,
@@ -58,8 +59,10 @@ function CompactMetric({
 interface FunnelData {
     shiftStatus: { status: number; label: string; count: number }[];
     assignmentsByStatus: { status: number; label: string; count: number }[];
+    hoursByStatus: { status: number; label: string; count: number }[];
     timeline: { date: string; byStatus: Record<number, number>; total: number }[];
     assignmentTimeline: { date: string; byStatus: Record<number, number>; total: number }[];
+    hoursTimeline: { date: string; byStatus: Record<number, number>; total: number }[];
     completion: { key: string; count: number }[];
     payment: { key: string; count: number }[];
     funnel: { status: number; label: string; count: number; dropOffPct: number }[];
@@ -98,14 +101,89 @@ interface FunnelData {
 
 export function FunnelTab({ data, loading }: { data: FunnelData | null; loading: boolean }) {
     const [viewMode, setViewMode] = useState<ViewMode>("shifts");
+    const [period, setPeriod] = useState<Period>("day");
+
+    const aggTimeline = useMemo(() => {
+        if (!data) return [];
+        const source =
+            viewMode === "shifts"
+                ? data.timeline
+                : viewMode === "executors"
+                    ? data.assignmentTimeline
+                    : data.hoursTimeline;
+        return aggregateByPeriod(
+            source,
+            period,
+            (acc, next) => {
+                const byStatus: Record<number, number> = { ...acc.byStatus };
+                for (const [s, v] of Object.entries(next.byStatus)) {
+                    byStatus[Number(s)] = (byStatus[Number(s)] ?? 0) + v;
+                }
+                return { date: acc.date, byStatus, total: acc.total + next.total };
+            },
+            (first) => ({ date: first.date, byStatus: { ...first.byStatus }, total: 0 }),
+        );
+    }, [data, viewMode, period]);
+
+    const aggPlanFact = useMemo(() => {
+        if (!data) return [];
+        return aggregateByPeriod(
+            data.planFact,
+            period,
+            (acc, next) => ({ date: acc.date, plan: acc.plan + next.plan, fact: acc.fact + next.fact }),
+            (first) => ({ date: first.date, plan: 0, fact: 0 }),
+        );
+    }, [data, period]);
+
+    const aggHoursTimeline = useMemo(() => {
+        if (!data) return [];
+        return aggregateByPeriod(
+            data.hoursTimeline,
+            period,
+            (acc, next) => {
+                const byStatus: Record<number, number> = { ...acc.byStatus };
+                for (const [s, v] of Object.entries(next.byStatus)) {
+                    byStatus[Number(s)] = (byStatus[Number(s)] ?? 0) + v;
+                }
+                return { date: acc.date, byStatus, total: acc.total + next.total };
+            },
+            (first) => ({ date: first.date, byStatus: { ...first.byStatus }, total: 0 }),
+        );
+    }, [data, period]);
+
+    const aggCostVsPayout = useMemo(() => {
+        if (!data) return [];
+        return aggregateByPeriod(
+            data.costVsPayout,
+            period,
+            (acc, next) => ({ date: acc.date, cost: acc.cost + next.cost, payouts: acc.payouts + next.payouts }),
+            (first) => ({ date: first.date, cost: 0, payouts: 0 }),
+        );
+    }, [data, period]);
 
     if (loading) return <div className="p-6 text-center text-muted-foreground">Загрузка...</div>;
     if (!data) return <div className="p-6 text-center text-muted-foreground">Нет данных</div>;
 
-    const activeStatusData = viewMode === "shifts" ? data.shiftStatus : data.assignmentsByStatus;
-    const activeTimeline = viewMode === "shifts" ? data.timeline : data.assignmentTimeline;
+    const activeStatusData =
+        viewMode === "shifts"
+            ? data.shiftStatus
+            : viewMode === "executors"
+                ? data.assignmentsByStatus
+                : data.hoursByStatus;
     const statusMap = new Map(activeStatusData.map((s) => [s.status, s.count]));
-    const viewLabel = viewMode === "shifts" ? "смен" : "назначений";
+    const viewLabel = viewMode === "shifts" ? "смен" : viewMode === "executors" ? "назначений" : "часов";
+    const chartTitle =
+        viewMode === "shifts"
+            ? "Смены по дням и статусам"
+            : viewMode === "executors"
+                ? "Исполнители по дням и статусам смен"
+                : "Часы работы по дням и статусам смен";
+    const chartSubtitle =
+        viewMode === "hours"
+            ? "type=1 → production · type=2,3,4 → назначения × 9ч"
+            : `Стек по статусу · Y — количество ${viewLabel}`;
+    const tickFormatter = (v: string) => formatPeriodLabel(v, period);
+    const PERIOD_ORDER: Period[] = ["day", "week", "month", "year"];
 
     const completionChart = data.completion.map((c) => ({
         name: COMPLETION_STATUS_LABEL[c.key] ?? c.key,
@@ -121,7 +199,7 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
 
     return (
         <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-1 border border-border rounded-sm p-0.5 bg-card">
                     <button
                         type="button"
@@ -145,7 +223,36 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
                     >
                         <Users className="h-3.5 w-3.5" /> Исполнители
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => setViewMode("hours")}
+                        className={`text-xs px-3 py-1.5 rounded-sm flex items-center gap-1.5 transition-colors ${
+                            viewMode === "hours"
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                        <Timer className="h-3.5 w-3.5" /> Часы
+                    </button>
                 </div>
+
+                <div className="flex items-center gap-1 border border-border rounded-sm p-0.5 bg-card">
+                    {PERIOD_ORDER.map((p) => (
+                        <button
+                            key={p}
+                            type="button"
+                            onClick={() => setPeriod(p)}
+                            className={`text-xs px-3 py-1.5 rounded-sm transition-colors ${
+                                period === p
+                                    ? "bg-primary text-primary-foreground"
+                                    : "text-muted-foreground hover:text-foreground"
+                            }`}
+                        >
+                            {PERIOD_LABELS[p]}
+                        </button>
+                    ))}
+                </div>
+
                 <div className="text-xs text-muted-foreground">
                     Всего: {fmtNumber(data.totalShifts)} смен · {fmtNumber(data.totalAssignments)} назначений
                 </div>
@@ -181,7 +288,7 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
                 <KpiCard
                     label="Часы — остальные (2,3,4)"
                     value={fmtNumber(data.overview.hoursFlat, 0)}
-                    subtitle={`${fmtNumber(data.overview.flatAssignments)} назн. × 8ч${data.overview.unknownTariffAssignments > 0 ? ` · ${fmtNumber(data.overview.unknownTariffAssignments)} без тарифа` : ""}`}
+                    subtitle={`${fmtNumber(data.overview.flatAssignments)} назн. × 9ч${data.overview.unknownTariffAssignments > 0 ? ` · ${fmtNumber(data.overview.unknownTariffAssignments)} без тарифа` : ""}`}
                     accentColor={POWER_BI_COLORS.orange}
                     icon={<Clock className="h-3.5 w-3.5" />}
                 />
@@ -190,14 +297,15 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
             <div className="grid grid-cols-12 gap-3">
                 <Panel
                     className="col-span-8 h-[360px]"
-                    title={viewMode === "shifts" ? "Смены по дням и статусам" : "Исполнители по дням и статусам смен"}
-                    subtitle={`Стек по статусу · Y — количество ${viewLabel}`}
+                    title={chartTitle}
+                    subtitle={chartSubtitle}
                 >
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={activeTimeline} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
+                        <BarChart data={aggTimeline} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                             <XAxis
                                 dataKey="date"
+                                tickFormatter={tickFormatter}
                                 tick={{ fontSize: 10 }}
                                 stroke="currentColor"
                                 angle={-45}
@@ -207,6 +315,7 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
                             />
                             <YAxis tick={{ fontSize: 11 }} stroke="currentColor" />
                             <Tooltip
+                                labelFormatter={tickFormatter}
                                 contentStyle={{
                                     backgroundColor: "var(--card)",
                                     borderColor: "var(--border)",
@@ -259,6 +368,53 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
                 </Panel>
             </div>
 
+            <Panel
+                className="h-[360px]"
+                title="Часы работы по дням и статусам"
+                subtitle="type=1 → production · type=2,3,4 → назначения × 9ч · стек по статусу"
+                right={
+                    <div className="text-xs text-muted-foreground">
+                        Всего: <b className="text-foreground">{fmtNumber(data.overview.hoursTotal, 0)}</b> ч
+                    </div>
+                }
+            >
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={aggHoursTimeline} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                        <XAxis
+                            dataKey="date"
+                            tickFormatter={tickFormatter}
+                            tick={{ fontSize: 10 }}
+                            stroke="currentColor"
+                            angle={-45}
+                            textAnchor="end"
+                            height={60}
+                            interval="preserveStartEnd"
+                        />
+                        <YAxis tick={{ fontSize: 11 }} stroke="currentColor" />
+                        <Tooltip
+                            labelFormatter={tickFormatter}
+                            contentStyle={{
+                                backgroundColor: "var(--card)",
+                                borderColor: "var(--border)",
+                                fontSize: 12,
+                            }}
+                            formatter={(v) => `${fmtNumber(Number(v) || 0, 1)} ч`}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                        {SHIFT_STATUS_ORDER.map((code) => (
+                            <Bar
+                                key={code}
+                                dataKey={(row: { byStatus: Record<number, number> }) => row.byStatus[code] ?? 0}
+                                name={SHIFT_STATUS[code]}
+                                stackId="h"
+                                fill={STATUS_COLORS[code]}
+                            />
+                        ))}
+                    </BarChart>
+                </ResponsiveContainer>
+            </Panel>
+
             <div className="grid grid-cols-12 gap-3">
                 <Panel
                     className="col-span-8 h-[360px]"
@@ -287,10 +443,11 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
                     }
                 >
                     <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={data.planFact} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
+                        <ComposedChart data={aggPlanFact} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
                             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                             <XAxis
                                 dataKey="date"
+                                tickFormatter={tickFormatter}
                                 tick={{ fontSize: 10 }}
                                 angle={-45}
                                 textAnchor="end"
@@ -299,6 +456,7 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
                             />
                             <YAxis tick={{ fontSize: 11 }} />
                             <Tooltip
+                                labelFormatter={tickFormatter}
                                 contentStyle={{
                                     backgroundColor: "var(--card)",
                                     borderColor: "var(--border)",
@@ -357,10 +515,11 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
                 className="h-[320px]"
             >
                 <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={data.costVsPayout} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
+                    <ComposedChart data={aggCostVsPayout} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis
                             dataKey="date"
+                            tickFormatter={tickFormatter}
                             tick={{ fontSize: 10 }}
                             angle={-45}
                             textAnchor="end"
@@ -369,6 +528,7 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
                         />
                         <YAxis tick={{ fontSize: 11 }} />
                         <Tooltip
+                            labelFormatter={tickFormatter}
                             contentStyle={{
                                 backgroundColor: "var(--card)",
                                 borderColor: "var(--border)",

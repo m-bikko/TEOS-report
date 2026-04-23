@@ -81,12 +81,17 @@ function inDateRange(date: string | null, from: string | null, to: string | null
 }
 
 function matchDimensions(r: ResolvedShift, f: V2Filters): boolean {
-    if (f.partnerId != null && r.partner?.id !== f.partnerId) return false;
-    if (f.cityId != null && r.city?.id !== f.cityId) return false;
-    if (f.companyId != null && r.company?.id !== f.companyId) return false;
-    if (f.branchId != null && r.branch?.id !== f.branchId) return false;
-    if (f.tariffId != null && r.tariff?.id !== f.tariffId) return false;
-    if (f.professionId != null && r.vacancy?.profession_id !== f.professionId) return false;
+    if (f.partnerIds.length > 0 && (r.partner == null || !f.partnerIds.includes(r.partner.id))) return false;
+    if (f.cityIds.length > 0 && (r.city == null || !f.cityIds.includes(r.city.id))) return false;
+    if (f.companyIds.length > 0 && (r.company == null || !f.companyIds.includes(r.company.id))) return false;
+    if (f.branchIds.length > 0 && (r.branch == null || !f.branchIds.includes(r.branch.id))) return false;
+    if (f.tariffIds.length > 0 && (r.tariff == null || !f.tariffIds.includes(r.tariff.id))) return false;
+    if (
+        f.professionIds.length > 0 &&
+        (r.vacancy?.profession_id == null || !f.professionIds.includes(r.vacancy.profession_id))
+    ) {
+        return false;
+    }
     if (f.shiftStatuses.length > 0 && !f.shiftStatuses.includes(r.shift.status)) return false;
     return true;
 }
@@ -146,19 +151,23 @@ export function filterVacancies(store: Store, f: V2Filters): Vacancy[] {
             if (f.dateFrom && v.start_date < f.dateFrom) return false;
             if (f.dateTo && v.start_date > f.dateTo) return false;
         }
-        if (f.partnerId != null) {
+        if (f.partnerIds.length > 0) {
             const resolved = resolvePartnerForVacancy(store, v);
-            if (resolved?.id !== f.partnerId) return false;
+            if (!resolved || !f.partnerIds.includes(resolved.id)) return false;
         }
-        if (f.tariffId != null && v.tariff_id !== f.tariffId) return false;
-        if (f.professionId != null && v.profession_id !== f.professionId) return false;
-        if (f.branchId != null && v.branch_id !== f.branchId) return false;
-        if (f.cityId != null || f.companyId != null) {
+        if (f.tariffIds.length > 0 && (v.tariff_id == null || !f.tariffIds.includes(v.tariff_id))) return false;
+        if (f.professionIds.length > 0 && (v.profession_id == null || !f.professionIds.includes(v.profession_id))) {
+            return false;
+        }
+        if (f.branchIds.length > 0 && (v.branch_id == null || !f.branchIds.includes(v.branch_id))) return false;
+        if (f.cityIds.length > 0 || f.companyIds.length > 0) {
             if (v.branch_id == null) return false;
             const branch = store.branchesById.get(v.branch_id);
             if (!branch) return false;
-            if (f.cityId != null && branch.city_id !== f.cityId) return false;
-            if (f.companyId != null && branch.company_id !== f.companyId) return false;
+            if (f.cityIds.length > 0 && (branch.city_id == null || !f.cityIds.includes(branch.city_id))) return false;
+            if (f.companyIds.length > 0 && (branch.company_id == null || !f.companyIds.includes(branch.company_id))) {
+                return false;
+            }
         }
         return true;
     });
@@ -168,7 +177,15 @@ export function filterBalanceLog(
     store: Store,
     f: V2Filters,
 ): BalanceLogEntry[] {
-    if (f.partnerId == null && f.cityId == null && f.companyId == null && f.branchId == null && f.tariffId == null && f.professionId == null && f.shiftStatuses.length === 0) {
+    if (
+        f.partnerIds.length === 0 &&
+        f.cityIds.length === 0 &&
+        f.companyIds.length === 0 &&
+        f.branchIds.length === 0 &&
+        f.tariffIds.length === 0 &&
+        f.professionIds.length === 0 &&
+        f.shiftStatuses.length === 0
+    ) {
         if (!f.dateFrom && !f.dateTo) return store.balanceLog;
         return store.balanceLog.filter((b) =>
             inDateRange(b.created_at ? b.created_at.slice(0, 10) : null, f.dateFrom, f.dateTo),
@@ -184,11 +201,13 @@ export function filterBalanceLog(
 
 export function parseFilters(url: URL): V2Filters {
     const p = url.searchParams;
-    const num = (k: string): number | null => {
+    const nums = (k: string): number[] => {
         const v = p.get(k);
-        if (!v) return null;
-        const n = Number(v);
-        return Number.isFinite(n) ? n : null;
+        if (!v) return [];
+        return v
+            .split(",")
+            .map((s) => Number(s.trim()))
+            .filter((n) => Number.isFinite(n));
     };
     const statusRaw = p.get("status");
     const shiftStatuses = statusRaw
@@ -201,12 +220,12 @@ export function parseFilters(url: URL): V2Filters {
     return {
         dateFrom: p.get("from"),
         dateTo: p.get("to"),
-        partnerId: num("partner"),
-        cityId: num("city"),
-        companyId: num("company"),
-        branchId: num("branch"),
-        tariffId: num("tariff"),
-        professionId: num("profession"),
+        partnerIds: nums("partner"),
+        cityIds: nums("city"),
+        companyIds: nums("company"),
+        branchIds: nums("branch"),
+        tariffIds: nums("tariff"),
+        professionIds: nums("profession"),
         shiftStatuses,
     };
 }

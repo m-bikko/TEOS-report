@@ -20,14 +20,14 @@ type TabKey = "funnel" | "finance" | "partners" | "vacancies";
 export default function V2Page() {
     const [dimensions, setDimensions] = useState<DimensionsData | null>(null);
     const [filters, setFilters] = useState<FilterState>({
-        from: null,
-        to: null,
-        partnerId: null,
-        cityId: null,
-        companyId: null,
-        branchId: null,
-        tariffId: null,
-        professionId: null,
+        from: "2026-01-01",
+        to: "2026-03-31",
+        partnerIds: [],
+        cityIds: [],
+        companyIds: [],
+        branchIds: [],
+        tariffIds: [],
+        professionIds: [],
         shiftStatuses: [],
     });
 
@@ -49,11 +49,6 @@ export default function V2Page() {
             .then((r) => r.json())
             .then((d: DimensionsData) => {
                 setDimensions(d);
-                setFilters((prev) => ({
-                    ...prev,
-                    from: prev.from ?? d.minDate,
-                    to: prev.to ?? d.maxDate,
-                }));
             })
             .catch((e) => console.error("dimensions fetch failed", e));
     }, []);
