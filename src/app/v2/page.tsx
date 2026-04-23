@@ -28,7 +28,7 @@ export default function V2Page() {
         branchIds: [],
         tariffIds: [],
         professionIds: [],
-        shiftStatuses: [],
+        shiftStatuses: [5],
     });
 
     const [tab, setTab] = useState<TabKey>("funnel");

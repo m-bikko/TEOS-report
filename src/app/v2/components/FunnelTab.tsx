@@ -185,6 +185,52 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
     const tickFormatter = (v: string) => formatPeriodLabel(v, period);
     const PERIOD_ORDER: Period[] = ["day", "week", "month", "year"];
 
+    type TooltipPayloadItem = { value?: number | string; color?: string; dataKey?: string | number };
+    const PlanFactTooltip = ({
+        active,
+        payload,
+        label,
+    }: {
+        active?: boolean;
+        payload?: TooltipPayloadItem[];
+        label?: string;
+    }) => {
+        if (!active || !payload || payload.length === 0) return null;
+        const planItem = payload.find((p) => p.dataKey === "plan");
+        const factItem = payload.find((p) => p.dataKey === "fact");
+        const plan = Number(planItem?.value ?? 0);
+        const fact = Number(factItem?.value ?? 0);
+        const pct = plan > 0 ? (fact / plan) * 100 : 0;
+        const pctColor = pct >= 90 ? "#3AA76D" : pct >= 60 ? "#F4B942" : "#D64550";
+        return (
+            <div
+                style={{
+                    backgroundColor: "var(--card)",
+                    borderColor: "var(--border)",
+                    fontSize: 12,
+                }}
+                className="border rounded-sm p-2 min-w-[140px] shadow-sm"
+            >
+                <div className="font-medium mb-1">
+                    {typeof label === "string" ? tickFormatter(label) : label}
+                </div>
+                {planItem && (
+                    <div style={{ color: planItem.color ?? undefined }}>
+                        План: <b>{fmtNumber(plan)}</b>
+                    </div>
+                )}
+                {factItem && (
+                    <div style={{ color: factItem.color ?? undefined }}>
+                        Факт: <b>{fmtNumber(fact)}</b>
+                    </div>
+                )}
+                <div style={{ color: pctColor, marginTop: 2 }}>
+                    %: <b>{fmtPct(pct)}</b>
+                </div>
+            </div>
+        );
+    };
+
     const completionChart = data.completion.map((c) => ({
         name: COMPLETION_STATUS_LABEL[c.key] ?? c.key,
         value: c.count,
@@ -455,14 +501,7 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
                                 interval="preserveStartEnd"
                             />
                             <YAxis tick={{ fontSize: 11 }} />
-                            <Tooltip
-                                labelFormatter={tickFormatter}
-                                contentStyle={{
-                                    backgroundColor: "var(--card)",
-                                    borderColor: "var(--border)",
-                                    fontSize: 12,
-                                }}
-                            />
+                            <Tooltip content={<PlanFactTooltip />} />
                             <Legend wrapperStyle={{ fontSize: 11 }} />
                             <Bar dataKey="plan" name="План" fill={POWER_BI_COLORS.deepBlue} opacity={0.5} />
                             <Line

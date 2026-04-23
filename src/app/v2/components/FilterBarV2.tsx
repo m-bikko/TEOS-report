@@ -22,6 +22,7 @@ import {
     CommandList,
 } from "@/components/ui/command";
 import { DimensionOption, BranchDimensionOption } from "@/lib/v2/types";
+import { REGIONS, RegionCode } from "@/lib/v2/regions";
 
 export interface FilterState {
     from: string | null;
@@ -259,7 +260,7 @@ export function FilterBarV2({ dimensions, filters, onChange }: FilterBarV2Props)
             branchIds: [],
             tariffIds: [],
             professionIds: [],
-            shiftStatuses: [],
+            shiftStatuses: [5],
         });
     };
 
@@ -281,6 +282,50 @@ export function FilterBarV2({ dimensions, filters, onChange }: FilterBarV2Props)
                 (b.companyId != null && filters.companyIds.includes(b.companyId)),
         )
         .map((b) => ({ id: b.id, label: b.label, extra: b.extra }));
+
+    const cityIdByTitle = React.useMemo(() => {
+        const m = new Map<string, number>();
+        for (const c of dimensions?.cities ?? []) m.set(c.label, c.id);
+        return m;
+    }, [dimensions]);
+
+    const regionCityIds = React.useMemo(() => {
+        const out = new Map<RegionCode, number[]>();
+        for (const r of REGIONS) {
+            const ids: number[] = [];
+            for (const title of r.cities) {
+                const id = cityIdByTitle.get(title);
+                if (id != null) ids.push(id);
+            }
+            out.set(r.code, ids);
+        }
+        return out;
+    }, [cityIdByTitle]);
+
+    const activeRegions = React.useMemo<Set<RegionCode>>(() => {
+        if (filters.cityIds.length === 0) return new Set();
+        const selectedSet = new Set(filters.cityIds);
+        const result = new Set<RegionCode>();
+        for (const r of REGIONS) {
+            const cityIds = regionCityIds.get(r.code) ?? [];
+            if (cityIds.length === 0) continue;
+            if (cityIds.every((id) => selectedSet.has(id))) result.add(r.code);
+        }
+        return result;
+    }, [filters.cityIds, regionCityIds]);
+
+    const toggleRegion = (code: RegionCode) => {
+        const regionIds = regionCityIds.get(code) ?? [];
+        if (regionIds.length === 0) return;
+        const isActive = activeRegions.has(code);
+        const current = new Set(filters.cityIds);
+        if (isActive) {
+            for (const id of regionIds) current.delete(id);
+        } else {
+            for (const id of regionIds) current.add(id);
+        }
+        onChange({ ...filters, cityIds: Array.from(current) });
+    };
 
     const statusesActive = filters.shiftStatuses.length > 0;
 
@@ -340,6 +385,42 @@ export function FilterBarV2({ dimensions, filters, onChange }: FilterBarV2Props)
                     <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
                     Сброс
                 </Button>
+            </div>
+            <div className="container mx-auto px-4 pb-2 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium mr-1">
+                    Регион:
+                </span>
+                {REGIONS.map((r) => {
+                    const active = activeRegions.has(r.code);
+                    const count = regionCityIds.get(r.code)?.length ?? 0;
+                    return (
+                        <button
+                            key={r.code}
+                            type="button"
+                            onClick={() => toggleRegion(r.code)}
+                            disabled={count === 0}
+                            className={cn(
+                                "text-xs px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1.5",
+                                active
+                                    ? "bg-primary text-primary-foreground border-transparent"
+                                    : "border-border bg-background hover:bg-muted text-foreground",
+                                count === 0 && "opacity-40 cursor-not-allowed",
+                            )}
+                        >
+                            {r.label}
+                            <span className="text-[10px] opacity-70">{count}</span>
+                        </button>
+                    );
+                })}
+                {activeRegions.size > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => onChange({ ...filters, cityIds: [] })}
+                        className="text-[11px] text-muted-foreground hover:text-foreground ml-1 underline"
+                    >
+                        снять города
+                    </button>
+                )}
             </div>
             <div className="container mx-auto px-4 pb-3 flex flex-wrap items-center gap-2">
                 <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium mr-1">
