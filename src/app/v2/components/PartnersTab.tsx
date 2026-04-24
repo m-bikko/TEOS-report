@@ -58,13 +58,13 @@ export function PartnersTab({ data, loading }: { data: PartnersData | null; load
                     label="Выручка"
                     value={fmtMoney(data.totalRevenue)}
                     accentColor={POWER_BI_COLORS.green}
-                    subtitle="Σ vacancies.cost_full"
+                    subtitle="Σ tariff.rate_for_company × production"
                 />
                 <KpiCard
                     label="Выплаты"
                     value={fmtMoney(data.totalPayouts)}
                     accentColor={POWER_BI_COLORS.red}
-                    subtitle="Σ pay_amount"
+                    subtitle="balance_log (type=1) по смене"
                 />
                 <KpiCard
                     label="Маржа"
@@ -76,7 +76,7 @@ export function PartnersTab({ data, loading }: { data: PartnersData | null; load
 
             <Panel
                 title="Выручка по топ-5 партнёрам во времени"
-                subtitle="Ежедневная сумма pay_amount"
+                subtitle="Ежедневная Σ tariff.rate_for_company × production по смене"
                 className="h-[360px]"
             >
                 <ResponsiveContainer width="100%" height="100%">

@@ -37,43 +37,49 @@ export function computePartners(store: Store, filters: V2Filters): PartnersRespo
     const shifts = filterShifts(store, filters);
     const assignments = filterShiftUsers(store, filters);
 
-    const vacancyRevenueByPartner = new Map<number, number>();
     const vacancyCountByPartner = new Map<number, number>();
     for (const v of vacancies) {
         const partner = resolvePartnerForVacancy(store, v);
         if (!partner) continue;
-        vacancyRevenueByPartner.set(partner.id, (vacancyRevenueByPartner.get(partner.id) ?? 0) + v.cost_full);
         vacancyCountByPartner.set(partner.id, (vacancyCountByPartner.get(partner.id) ?? 0) + 1);
     }
 
     const shiftCountByPartner = new Map<number, number>();
+    const shiftIdToPartner = new Map<number, number>();
     for (const r of shifts) {
         if (r.partner?.id == null) continue;
         shiftCountByPartner.set(r.partner.id, (shiftCountByPartner.get(r.partner.id) ?? 0) + 1);
+        shiftIdToPartner.set(r.shift.id, r.partner.id);
+    }
+
+    const revenueByPartner = new Map<number, number>();
+    const revenueDailyByPartner = new Map<string, Map<number, number>>();
+
+    for (const a of assignments) {
+        const pid = a.partner?.id;
+        if (pid == null) continue;
+        const rate = a.tariff?.rate_for_company ?? 0;
+        const revenue = rate * a.shiftUser.production;
+        if (revenue === 0) continue;
+        revenueByPartner.set(pid, (revenueByPartner.get(pid) ?? 0) + revenue);
+        const date = a.shift.date;
+        if (!date) continue;
+        let dayMap = revenueDailyByPartner.get(date);
+        if (!dayMap) {
+            dayMap = new Map();
+            revenueDailyByPartner.set(date, dayMap);
+        }
+        dayMap.set(pid, (dayMap.get(pid) ?? 0) + revenue);
     }
 
     const payoutByPartner = new Map<number, number>();
-    const dailyByPartner = new Map<string, Map<number, number>>();
-    const shiftToPartner = new Map<number, number>();
-    for (const r of shifts) {
-        if (r.partner?.id != null) shiftToPartner.set(r.shift.id, r.partner.id);
-    }
     for (const entry of store.balanceLog) {
         if (entry.type !== 1) continue;
         if (entry.shift_id == null) continue;
-        const pid = shiftToPartner.get(entry.shift_id);
+        const pid = shiftIdToPartner.get(entry.shift_id);
         if (pid == null) continue;
-        const amt = Math.abs(entry.change_amount);
-        payoutByPartner.set(pid, (payoutByPartner.get(pid) ?? 0) + amt);
-        const day = (entry.created_at ?? "").slice(0, 10) || "—";
-        let dayMap = dailyByPartner.get(day);
-        if (!dayMap) {
-            dayMap = new Map();
-            dailyByPartner.set(day, dayMap);
-        }
-        dayMap.set(pid, (dayMap.get(pid) ?? 0) + amt);
+        payoutByPartner.set(pid, (payoutByPartner.get(pid) ?? 0) + Math.abs(entry.change_amount));
     }
-    void assignments;
 
     const companiesCountByPartner = new Map<number, number>();
     for (const c of store.companies) {
@@ -82,7 +88,7 @@ export function computePartners(store: Store, filters: V2Filters): PartnersRespo
     }
 
     const rows: PartnerRow[] = store.partners.map((p) => {
-        const revenue = vacancyRevenueByPartner.get(p.id) ?? 0;
+        const revenue = revenueByPartner.get(p.id) ?? 0;
         const payouts = payoutByPartner.get(p.id) ?? 0;
         const margin = revenue - payouts;
         return {
@@ -104,7 +110,7 @@ export function computePartners(store: Store, filters: V2Filters): PartnersRespo
 
     rows.sort((a, b) => b.revenue - a.revenue);
 
-    const daily: PartnerDailyPoint[] = Array.from(dailyByPartner.entries())
+    const daily: PartnerDailyPoint[] = Array.from(revenueDailyByPartner.entries())
         .map(([date, map]) => {
             const byPartner: Record<number, number> = {};
             let total = 0;
