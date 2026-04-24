@@ -30,6 +30,7 @@ interface VacancyRow {
 
 interface ProfessionRow {
     professionId: number;
+    title: string;
     vacanciesCount: number;
     totalEmployees: number;
     filled: number;
@@ -116,9 +117,9 @@ export function VacanciesTab({ data, loading }: { data: VacanciesData | null; lo
                             <XAxis type="number" tick={{ fontSize: 11 }} />
                             <YAxis
                                 type="category"
-                                dataKey={(row: ProfessionRow) => `#${row.professionId}`}
+                                dataKey={(row: ProfessionRow) => row.title || `#${row.professionId}`}
                                 tick={{ fontSize: 11 }}
-                                width={60}
+                                width={140}
                             />
                             <Tooltip
                                 contentStyle={{

@@ -27,6 +27,7 @@ export interface VacancyRow {
 
 export interface ProfessionRow {
     professionId: number;
+    title: string;
     vacanciesCount: number;
     totalEmployees: number;
     filled: number;
@@ -171,6 +172,7 @@ export function computeVacancies(store: Store, filters: V2Filters): VacanciesRes
     const professions: ProfessionRow[] = Array.from(byProfession.entries())
         .map(([professionId, b]) => ({
             professionId,
+            title: store.professionTitleById.get(professionId) ?? `#${professionId}`,
             vacanciesCount: b.vacancies,
             totalEmployees: b.needed,
             filled: b.filled,

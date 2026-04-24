@@ -31,6 +31,7 @@ export interface Store {
     vacanciesById: Map<number, Vacancy>;
     shiftsById: Map<number, Shift>;
     branchesById: Map<number, Branch>;
+    professionTitleById: Map<number, string>;
 }
 
 async function loadCities(): Promise<City[]> {
@@ -257,6 +258,41 @@ function indexById<T extends { id: number }>(rows: T[]): Map<number, T> {
     return m;
 }
 
+function normalizeProfessionTitle(raw: string): string {
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    const head = trimmed.split(/[,:(]/)[0].trim();
+    return head.length >= 3 ? head : trimmed;
+}
+
+function buildProfessionTitles(vacancies: Vacancy[]): Map<number, string> {
+    const counts = new Map<number, Map<string, number>>();
+    for (const v of vacancies) {
+        if (v.profession_id == null) continue;
+        const name = normalizeProfessionTitle(v.title ?? "");
+        if (!name) continue;
+        let inner = counts.get(v.profession_id);
+        if (!inner) {
+            inner = new Map();
+            counts.set(v.profession_id, inner);
+        }
+        inner.set(name, (inner.get(name) ?? 0) + 1);
+    }
+    const result = new Map<number, string>();
+    for (const [pid, titles] of counts) {
+        let best = "";
+        let bestCount = 0;
+        for (const [name, c] of titles) {
+            if (c > bestCount) {
+                bestCount = c;
+                best = name;
+            }
+        }
+        if (best) result.set(pid, best);
+    }
+    return result;
+}
+
 export async function getStore(): Promise<Store> {
     const [
         cities,
@@ -297,5 +333,6 @@ export async function getStore(): Promise<Store> {
         vacanciesById: indexById(vacancies),
         shiftsById: indexById(shifts),
         branchesById: indexById(branches),
+        professionTitleById: buildProfessionTitles(vacancies),
     };
 }
