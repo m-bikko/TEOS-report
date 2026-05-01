@@ -519,31 +519,94 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
                 <Panel
                     className="col-span-4 h-[360px]"
                     title="Стоимость vs Выплаты"
-                    subtitle="tariff × production vs факт выплат по сменам"
+                    subtitle={
+                        period === "day"
+                            ? "tariff × production vs факт выплат по сменам"
+                            : `Итог + разбивка по ${PERIOD_LABELS[period].toLowerCase()}`
+                    }
                 >
-                    <div className="h-full flex flex-col justify-around gap-2">
-                        <CompactMetric
-                            label="Расчётная стоимость"
-                            value={fmtMoney(data.overview.expectedCost)}
-                            hint="Σ tariff.rate_for_company × production"
-                            accentColor={POWER_BI_COLORS.deepBlue}
-                        />
-                        <CompactMetric
-                            label="Фактические выплаты"
-                            value={fmtMoney(data.overview.actualPayouts)}
-                            hint="balance_log (type=1) по смене"
-                            accentColor={POWER_BI_COLORS.orange}
-                        />
-                        <CompactMetric
-                            label="Расхождение"
-                            value={fmtMoney(data.overview.costDelta)}
-                            hint={fmtPct(data.overview.costDeltaPct)}
-                            accentColor={
-                                data.overview.costDelta >= 0
-                                    ? POWER_BI_COLORS.green
-                                    : POWER_BI_COLORS.red
-                            }
-                        />
+                    <div className="h-full flex flex-col gap-2 overflow-y-auto">
+                        <div className="grid grid-cols-3 gap-2">
+                            <div
+                                className="border-l-2 pl-2 py-1"
+                                style={{ borderLeftColor: POWER_BI_COLORS.deepBlue }}
+                            >
+                                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium leading-tight">
+                                    Стоимость
+                                </div>
+                                <div className="text-base font-semibold leading-tight mt-0.5">
+                                    {fmtMoney(data.overview.expectedCost)}
+                                </div>
+                            </div>
+                            <div
+                                className="border-l-2 pl-2 py-1"
+                                style={{ borderLeftColor: POWER_BI_COLORS.orange }}
+                            >
+                                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium leading-tight">
+                                    Выплаты
+                                </div>
+                                <div className="text-base font-semibold leading-tight mt-0.5">
+                                    {fmtMoney(data.overview.actualPayouts)}
+                                </div>
+                            </div>
+                            <div
+                                className="border-l-2 pl-2 py-1"
+                                style={{
+                                    borderLeftColor:
+                                        data.overview.costDelta >= 0
+                                            ? POWER_BI_COLORS.green
+                                            : POWER_BI_COLORS.red,
+                                }}
+                            >
+                                <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium leading-tight">
+                                    Δ ({fmtPct(data.overview.costDeltaPct)})
+                                </div>
+                                <div className="text-base font-semibold leading-tight mt-0.5">
+                                    {fmtMoney(data.overview.costDelta)}
+                                </div>
+                            </div>
+                        </div>
+
+                        {period !== "day" && aggCostVsPayout.length > 0 && (
+                            <div className="text-xs flex-1 min-h-0">
+                                <table className="w-full">
+                                    <thead className="sticky top-0 bg-card border-b">
+                                        <tr className="text-left text-muted-foreground">
+                                            <th className="py-1 pr-1 font-medium">Период</th>
+                                            <th className="py-1 px-1 font-medium text-right">Стоимость</th>
+                                            <th className="py-1 px-1 font-medium text-right">Выплаты</th>
+                                            <th className="py-1 pl-1 font-medium text-right">Δ%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {aggCostVsPayout.map((row, i) => {
+                                            const delta = row.cost - row.payouts;
+                                            const deltaPct = row.cost > 0 ? (delta / row.cost) * 100 : 0;
+                                            return (
+                                                <tr key={row.date} className={i % 2 ? "bg-muted/20" : ""}>
+                                                    <td className="py-1 pr-1 whitespace-nowrap">
+                                                        {tickFormatter(row.date)}
+                                                    </td>
+                                                    <td className="py-1 px-1 text-right">
+                                                        {fmtMoney(row.cost)}
+                                                    </td>
+                                                    <td className="py-1 px-1 text-right">
+                                                        {fmtMoney(row.payouts)}
+                                                    </td>
+                                                    <td
+                                                        className={`py-1 pl-1 text-right font-medium ${
+                                                            delta >= 0 ? "text-green-700" : "text-red-700"
+                                                        }`}
+                                                    >
+                                                        {fmtPct(deltaPct)}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
                 </Panel>
             </div>
