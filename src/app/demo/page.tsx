@@ -1,7 +1,21 @@
 import Link from "next/link";
-import { ExternalLink, FlaskConical } from "lucide-react";
+import { ExternalLink, FlaskConical, Download } from "lucide-react";
 import { FunnelMockChart } from "./FunnelMockChart";
 import { generateMockFunnel } from "./mockData";
+
+const DOWNLOADS: { file: string; desc: string }[] = [
+    { file: "FunnelMockChart.tsx", desc: "сам график + KPI-ряд" },
+    { file: "mockData.ts", desc: "генератор мока + типы (FunnelDayPoint)" },
+    { file: "page.tsx", desc: "эта страница (для прод-использования не нужна)" },
+    { file: "FUNNEL_CHART_GUIDE.md", desc: "полный гайд по интеграции" },
+];
+
+const FILE_PATH_LABEL: Record<string, string> = {
+    "FunnelMockChart.tsx": "src/app/demo/FunnelMockChart.tsx",
+    "mockData.ts": "src/app/demo/mockData.ts",
+    "page.tsx": "src/app/demo/page.tsx",
+    "FUNNEL_CHART_GUIDE.md": "docs/FUNNEL_CHART_GUIDE.md",
+};
 
 /**
  * Демо-страница: воронка смен на мок-данных.
@@ -118,27 +132,24 @@ Response 200:
 <FunnelMockChart data={data} />`}
                         </pre>
                         <p className="text-xs text-muted-foreground pt-2 border-t">
-                            Файлы компоненты:
+                            Файлы компоненты (клик — скачать):
                         </p>
-                        <ul className="text-xs space-y-1 list-disc pl-4">
-                            <li>
-                                <code className="bg-muted px-1 py-0.5 rounded text-[11px]">
-                                    src/app/demo/FunnelMockChart.tsx
-                                </code>{" "}
-                                — сам график + KPI-ряд
-                            </li>
-                            <li>
-                                <code className="bg-muted px-1 py-0.5 rounded text-[11px]">
-                                    src/app/demo/mockData.ts
-                                </code>{" "}
-                                — генератор мока + типы (FunnelDayPoint)
-                            </li>
-                            <li>
-                                <code className="bg-muted px-1 py-0.5 rounded text-[11px]">
-                                    src/app/demo/page.tsx
-                                </code>{" "}
-                                — эта страница (для прод-использования не нужна)
-                            </li>
+                        <ul className="text-xs space-y-1.5">
+                            {DOWNLOADS.map((d) => (
+                                <li key={d.file} className="flex items-start gap-2">
+                                    <a
+                                        href={`/api/demo/download?file=${encodeURIComponent(d.file)}`}
+                                        download={d.file}
+                                        className="text-primary hover:underline inline-flex items-center gap-1 shrink-0"
+                                    >
+                                        <Download className="h-3 w-3" />
+                                        <code className="bg-muted px-1 py-0.5 rounded text-[11px]">
+                                            {FILE_PATH_LABEL[d.file]}
+                                        </code>
+                                    </a>
+                                    <span className="text-muted-foreground">— {d.desc}</span>
+                                </li>
+                            ))}
                         </ul>
                     </section>
                 </div>
