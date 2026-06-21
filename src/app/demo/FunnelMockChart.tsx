@@ -30,10 +30,15 @@
  *     визуально терялась (линия штрафов "плыла" наверху как будто крупная серия).
  *   - taken/attended — сгруппированные бары
  *   - fines/cancelled — линии (поверх баров, чтобы не сливались с горизонтом)
+ *
+ * ЛЭЙАУТ:
+ *   - grid col-9 chart + col-3 правая панель-легенда (одинаково с /demo-2).
+ *   - Каждая серия в легенде кликабельна — toggle hide/show на графике.
+ *   - Цвет: квадрат для баров, горизонтальная полоска для линий.
  * ──────────────────────────────────────────────────────────────────────────
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
@@ -49,31 +54,64 @@ import {
 } from "recharts";
 import { FunnelDayPoint } from "./mockData";
 
-const COLOR_TAKEN = "#118DFF";    // основной синий
-const COLOR_ATTEND = "#2FACAD";   // бирюзовый
-const COLOR_FINE = "#D64550";     // красный
-const COLOR_CANCEL = "#E66C37";   // оранжевый
+type Kind = "bar" | "line";
+
+interface SeriesDef {
+    key: keyof FunnelDayPoint;
+    label: string;
+    color: string;
+    kind: Kind;
+    desc: string;
+}
+
+const SERIES: SeriesDef[] = [
+    {
+        key: "taken",
+        label: "Взяли смену",
+        color: "#118DFF",
+        kind: "bar",
+        desc: "исполнители записались на смену в этот день",
+    },
+    {
+        key: "attended",
+        label: "Вышли на объект",
+        color: "#2FACAD",
+        kind: "bar",
+        desc: "реально появились на объекте",
+    },
+    {
+        key: "fines",
+        label: "Штраф",
+        color: "#D64550",
+        kind: "line",
+        desc: "штрафные события за день",
+    },
+    {
+        key: "cancelled",
+        label: "Отменили",
+        color: "#E66C37",
+        kind: "line",
+        desc: "юзер снялся со смены",
+    },
+];
 
 interface Props {
     data: FunnelDayPoint[];
 }
 
 export function FunnelMockChart({ data }: Props) {
-    // Подсчёт KPI в одном проходе — для шапки над графиком
+    const [hidden, setHidden] = useState<Set<string>>(new Set());
+
     const totals = useMemo(() => {
-        let taken = 0,
-            attended = 0,
-            fines = 0,
-            cancelled = 0;
+        const m: Record<string, number> = {};
+        for (const s of SERIES) m[s.key] = 0;
         for (const d of data) {
-            taken += d.taken;
-            attended += d.attended;
-            fines += d.fines;
-            cancelled += d.cancelled;
+            for (const s of SERIES) m[s.key] += Number(d[s.key]) || 0;
         }
-        const showUpPct = taken > 0 ? (attended / taken) * 100 : 0;
-        return { taken, attended, fines, cancelled, showUpPct };
+        return m;
     }, [data]);
+
+    const showUpPct = totals.taken > 0 ? (totals.attended / totals.taken) * 100 : 0;
 
     const tickFormatter = (iso: string) => {
         try {
@@ -91,107 +129,126 @@ export function FunnelMockChart({ data }: Props) {
         }
     };
 
+    const toggle = (key: string) => {
+        setHidden((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    };
+
     return (
-        <div className="border border-border rounded-sm bg-card p-4 space-y-4">
-            {/* Верхняя «лента» KPI — totals по выбранному периоду */}
-            <div className="grid grid-cols-4 gap-3">
-                <KpiBlock label="Взяли смену" value={totals.taken} accent={COLOR_TAKEN} />
-                <KpiBlock
-                    label="Вышли на объект"
-                    value={totals.attended}
-                    accent={COLOR_ATTEND}
-                    hint={`${totals.showUpPct.toFixed(1)}% явка`}
-                />
-                <KpiBlock label="Штрафы" value={totals.fines} accent={COLOR_FINE} />
-                <KpiBlock label="Отменили" value={totals.cancelled} accent={COLOR_CANCEL} />
+        <div className="border border-border rounded-sm bg-card p-4">
+            <div className="mb-3">
+                <h2 className="text-sm font-semibold">Воронка смен</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                    Бары (взяли/вышли) + линии (штраф/отмена) · одна ось Y ·
+                    клик на легенду справа скрывает/показывает серию
+                </p>
             </div>
 
-            {/* Основной график */}
-            <div className="h-[420px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart
-                        data={data}
-                        margin={{ top: 10, right: 20, left: 0, bottom: 24 }}
-                    >
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis
-                            dataKey="date"
-                            tickFormatter={tickFormatter}
-                            tick={{ fontSize: 11 }}
-                            angle={-45}
-                            textAnchor="end"
-                            height={48}
-                            interval={0}
-                        />
-                        {/* Единая ось Y — все 4 серии в одном масштабе.
-                            Линии штрафов/отмен идут низко = правдиво показывают
-                            пропорцию относительно общего числа смен. */}
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip
-                            labelFormatter={tooltipLabelFormatter}
-                            contentStyle={{
-                                backgroundColor: "var(--card)",
-                                borderColor: "var(--border)",
-                                fontSize: 12,
-                            }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: 11 }} />
+            <div className="grid grid-cols-12 gap-4">
+                {/* График */}
+                <div className="col-span-12 lg:col-span-9 h-[440px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart
+                            data={data}
+                            margin={{ top: 10, right: 12, left: 0, bottom: 24 }}
+                        >
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis
+                                dataKey="date"
+                                tickFormatter={tickFormatter}
+                                tick={{ fontSize: 11 }}
+                                angle={-45}
+                                textAnchor="end"
+                                height={48}
+                                interval={0}
+                            />
+                            <YAxis tick={{ fontSize: 11 }} />
+                            <Tooltip
+                                labelFormatter={tooltipLabelFormatter}
+                                contentStyle={{
+                                    backgroundColor: "var(--card)",
+                                    borderColor: "var(--border)",
+                                    fontSize: 12,
+                                }}
+                            />
+                            <Legend wrapperStyle={{ display: "none" }} />
 
-                        {/* Bars: сгруппированы (один barCategoryGap) */}
-                        <Bar dataKey="taken" name="Взяли смену" fill={COLOR_TAKEN} radius={[2, 2, 0, 0]} />
-                        <Bar
-                            dataKey="attended"
-                            name="Вышли на объект"
-                            fill={COLOR_ATTEND}
-                            radius={[2, 2, 0, 0]}
-                        />
+                            {SERIES.filter((s) => s.kind === "bar").map((s) => (
+                                <Bar
+                                    key={s.key}
+                                    dataKey={s.key}
+                                    name={s.label}
+                                    fill={s.color}
+                                    radius={[2, 2, 0, 0]}
+                                    hide={hidden.has(s.key)}
+                                />
+                            ))}
+                            {SERIES.filter((s) => s.kind === "line").map((s) => (
+                                <Line
+                                    key={s.key}
+                                    type="monotone"
+                                    dataKey={s.key}
+                                    name={s.label}
+                                    stroke={s.color}
+                                    strokeWidth={2}
+                                    dot={{ r: 2, fill: s.color }}
+                                    hide={hidden.has(s.key)}
+                                />
+                            ))}
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                </div>
 
-                        {/* Lines поверх баров */}
-                        <Line
-                            type="monotone"
-                            dataKey="fines"
-                            name="Штраф"
-                            stroke={COLOR_FINE}
-                            strokeWidth={2}
-                            dot={{ r: 2, fill: COLOR_FINE }}
-                        />
-                        <Line
-                            type="monotone"
-                            dataKey="cancelled"
-                            name="Отменили"
-                            stroke={COLOR_CANCEL}
-                            strokeWidth={2}
-                            dot={{ r: 2, fill: COLOR_CANCEL }}
-                        />
-                    </ComposedChart>
-                </ResponsiveContainer>
+                {/* Легенда / описания справа */}
+                <aside className="col-span-12 lg:col-span-3 flex flex-col gap-2 text-xs">
+                    <div className="flex items-baseline justify-between border-b pb-2 mb-1">
+                        <span className="font-semibold">Явка за период</span>
+                        <span className="text-base font-semibold">{showUpPct.toFixed(1)}%</span>
+                    </div>
+                    {SERIES.map((s) => {
+                        const isHidden = hidden.has(s.key);
+                        return (
+                            <button
+                                key={s.key}
+                                type="button"
+                                onClick={() => toggle(s.key)}
+                                className={`text-left rounded-sm border px-2 py-1.5 transition-colors ${
+                                    isHidden
+                                        ? "border-border bg-muted/30 opacity-50"
+                                        : "border-border bg-card hover:bg-muted/40"
+                                }`}
+                            >
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="inline-flex items-center gap-2 font-medium">
+                                        {s.kind === "bar" ? (
+                                            <span
+                                                className="w-3 h-3 rounded-sm shrink-0"
+                                                style={{ backgroundColor: s.color }}
+                                            />
+                                        ) : (
+                                            <span
+                                                className="w-3 h-0.5 shrink-0"
+                                                style={{ backgroundColor: s.color }}
+                                            />
+                                        )}
+                                        {s.label}
+                                    </span>
+                                    <span className="text-muted-foreground tabular-nums">
+                                        {totals[s.key].toLocaleString("ru-RU")}
+                                    </span>
+                                </div>
+                                <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                                    {s.desc}
+                                </div>
+                            </button>
+                        );
+                    })}
+                </aside>
             </div>
-        </div>
-    );
-}
-
-function KpiBlock({
-    label,
-    value,
-    accent,
-    hint,
-}: {
-    label: string;
-    value: number;
-    accent: string;
-    hint?: string;
-}) {
-    return (
-        <div className="border-l-2 pl-3 py-1" style={{ borderLeftColor: accent }}>
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium leading-tight">
-                {label}
-            </div>
-            <div className="text-2xl font-semibold leading-tight mt-0.5">
-                {value.toLocaleString("ru-RU")}
-            </div>
-            {hint && (
-                <div className="text-[11px] text-muted-foreground leading-tight mt-0.5">{hint}</div>
-            )}
         </div>
     );
 }

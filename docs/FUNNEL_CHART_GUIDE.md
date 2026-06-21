@@ -144,18 +144,40 @@ export default function Page() {
 
 ---
 
-## 5. KPI-ряд сверху
+## 5. Легенда справа (вместо верхнего KPI-ряда)
 
-4 карточки с итогами по выбранному периоду:
+Раньше KPI висели сверху, теперь — `<aside className="col-span-3">` справа от графика
+(одинаково с `/demo-2`). В шапке — общая «Явка за период» (attended / taken).
 
-| Карточка | Что показывает | Цвет акцента |
-|---|---|---|
-| Взяли смену | `Σ taken` | `#118DFF` |
-| Вышли на объект | `Σ attended`, подпись «% явки» | `#2FACAD` |
-| Штрафы | `Σ fines` | `#D64550` |
-| Отменили | `Σ cancelled` | `#E66C37` |
+Под ней — 4 кликабельных блока, один на серию:
 
-% явки = `attended / taken × 100`. Считается в одном проходе через `useMemo`.
+| Серия | Маркер | Цвет | Что показывает |
+|---|---|---|---|
+| Взяли смену | квадрат | `#118DFF` | `Σ taken` + описание |
+| Вышли на объект | квадрат | `#2FACAD` | `Σ attended` + описание |
+| Штраф | полоска (линия) | `#D64550` | `Σ fines` + описание |
+| Отменили | полоска (линия) | `#E66C37` | `Σ cancelled` + описание |
+
+Клик по блоку = `hide`/`show` серии на графике через локальный `useState<Set<string>>`.
+Встроенная recharts-легенда подавлена через `<Legend wrapperStyle={{ display: "none" }} />`.
+
+Структура раскладки:
+
+```tsx
+<div className="grid grid-cols-12 gap-4">
+    <div className="col-span-12 lg:col-span-9 h-[440px]">
+        <ResponsiveContainer>...</ResponsiveContainer>
+    </div>
+    <aside className="col-span-12 lg:col-span-3 flex flex-col gap-2 text-xs">
+        {SERIES.map((s) => (
+            <button onClick={() => toggle(s.key)}>
+                <span color={s.color} /> {s.label}  {totals[s.key]}
+                <div>{s.desc}</div>
+            </button>
+        ))}
+    </aside>
+</div>
+```
 
 ---
 
