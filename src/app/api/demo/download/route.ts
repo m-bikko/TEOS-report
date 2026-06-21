@@ -5,6 +5,7 @@ import path from "path";
 export const dynamic = "force-dynamic";
 
 const FILES: Record<string, { path: string; contentType: string }> = {
+    // /demo
     "FunnelMockChart.tsx": {
         path: "src/app/demo/FunnelMockChart.tsx",
         contentType: "text/plain; charset=utf-8",
@@ -19,6 +20,27 @@ const FILES: Record<string, { path: string; contentType: string }> = {
     },
     "FUNNEL_CHART_GUIDE.md": {
         path: "docs/FUNNEL_CHART_GUIDE.md",
+        contentType: "text/markdown; charset=utf-8",
+    },
+    // /demo-2
+    "OrdersByStatusChart.tsx": {
+        path: "src/app/demo-2/OrdersByStatusChart.tsx",
+        contentType: "text/plain; charset=utf-8",
+    },
+    "IntakeChart.tsx": {
+        path: "src/app/demo-2/IntakeChart.tsx",
+        contentType: "text/plain; charset=utf-8",
+    },
+    "mockData2.ts": {
+        path: "src/app/demo-2/mockData2.ts",
+        contentType: "text/plain; charset=utf-8",
+    },
+    "page-2.tsx": {
+        path: "src/app/demo-2/page.tsx",
+        contentType: "text/plain; charset=utf-8",
+    },
+    "DEMO_2_GUIDE.md": {
+        path: "docs/DEMO_2_GUIDE.md",
         contentType: "text/markdown; charset=utf-8",
     },
 };
