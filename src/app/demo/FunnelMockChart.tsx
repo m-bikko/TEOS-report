@@ -24,10 +24,12 @@
  *
  *
  * ВИЗУАЛЬНАЯ ЛОГИКА:
- *   - Две левые серии (taken/attended) — близки по величине (~1000), рисуем
- *     сгруппированными бар-чартами на левой оси Y.
- *   - Две правые (fines/cancelled) — маленькие (десятки), рисуем линиями
- *     на отдельной правой оси Y, иначе на фоне бар-чартов они сольются в ноль.
+ *   - Все 4 серии живут на ОДНОЙ оси Y, чтобы пропорции были честными.
+ *     При штрафах ~100 и сменах ~1000 линии штрафов идут низко — это правда:
+ *     штрафов реально мало относительно смен. На двух осях такая разница
+ *     визуально терялась (линия штрафов "плыла" наверху как будто крупная серия).
+ *   - taken/attended — сгруппированные бары
+ *   - fines/cancelled — линии (поверх баров, чтобы не сливались с горизонтом)
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -121,29 +123,10 @@ export function FunnelMockChart({ data }: Props) {
                             height={48}
                             interval={0}
                         />
-                        {/* Левая ось — крупные значения (взяли/вышли) */}
-                        <YAxis
-                            yAxisId="left"
-                            tick={{ fontSize: 11 }}
-                            label={{
-                                value: "Смены",
-                                angle: -90,
-                                position: "insideLeft",
-                                style: { fontSize: 11, fill: "var(--muted-foreground)" },
-                            }}
-                        />
-                        {/* Правая ось — мелкие значения (штрафы/отмены) */}
-                        <YAxis
-                            yAxisId="right"
-                            orientation="right"
-                            tick={{ fontSize: 11 }}
-                            label={{
-                                value: "Штрафы / Отмены",
-                                angle: 90,
-                                position: "insideRight",
-                                style: { fontSize: 11, fill: "var(--muted-foreground)" },
-                            }}
-                        />
+                        {/* Единая ось Y — все 4 серии в одном масштабе.
+                            Линии штрафов/отмен идут низко = правдиво показывают
+                            пропорцию относительно общего числа смен. */}
+                        <YAxis tick={{ fontSize: 11 }} />
                         <Tooltip
                             labelFormatter={tooltipLabelFormatter}
                             contentStyle={{
@@ -155,25 +138,16 @@ export function FunnelMockChart({ data }: Props) {
                         <Legend wrapperStyle={{ fontSize: 11 }} />
 
                         {/* Bars: сгруппированы (один barCategoryGap) */}
+                        <Bar dataKey="taken" name="Взяли смену" fill={COLOR_TAKEN} radius={[2, 2, 0, 0]} />
                         <Bar
-                            yAxisId="left"
-                            dataKey="taken"
-                            name="Взяли смену"
-                            fill={COLOR_TAKEN}
-                            radius={[2, 2, 0, 0]}
-                        />
-                        <Bar
-                            yAxisId="left"
                             dataKey="attended"
                             name="Вышли на объект"
                             fill={COLOR_ATTEND}
                             radius={[2, 2, 0, 0]}
                         />
 
-                        {/* Lines: на отдельной (правой) оси, иначе при шкале 1000
-                            штрафы и отмены сольются с нулём */}
+                        {/* Lines поверх баров */}
                         <Line
-                            yAxisId="right"
                             type="monotone"
                             dataKey="fines"
                             name="Штраф"
@@ -182,7 +156,6 @@ export function FunnelMockChart({ data }: Props) {
                             dot={{ r: 2, fill: COLOR_FINE }}
                         />
                         <Line
-                            yAxisId="right"
                             type="monotone"
                             dataKey="cancelled"
                             name="Отменили"
