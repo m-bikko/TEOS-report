@@ -43,6 +43,23 @@ const FILES: Record<string, { path: string; contentType: string }> = {
         path: "docs/DEMO_2_GUIDE.md",
         contentType: "text/markdown; charset=utf-8",
     },
+    // /demo-3
+    "PaymentsChart.tsx": {
+        path: "src/app/demo-3/PaymentsChart.tsx",
+        contentType: "text/plain; charset=utf-8",
+    },
+    "mockData3.ts": {
+        path: "src/app/demo-3/mockData3.ts",
+        contentType: "text/plain; charset=utf-8",
+    },
+    "page-3.tsx": {
+        path: "src/app/demo-3/page.tsx",
+        contentType: "text/plain; charset=utf-8",
+    },
+    "DEMO_3_GUIDE.md": {
+        path: "docs/DEMO_3_GUIDE.md",
+        contentType: "text/markdown; charset=utf-8",
+    },
 };
 
 export async function GET(request: Request) {
