@@ -43,20 +43,9 @@ interface Props {
     commissionPct?: number;
 }
 
-const fmtMoney = (n: number): string => {
-    if (Math.abs(n) >= 1_000_000)
-        return `${(n / 1_000_000).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} млн ₸`;
-    if (Math.abs(n) >= 1_000)
-        return `${(n / 1_000).toLocaleString("ru-RU", { maximumFractionDigits: 0 })} тыс ₸`;
-    return `${Math.round(n).toLocaleString("ru-RU")} ₸`;
-};
+const fmtMoney = (n: number): string => `${Math.round(n).toLocaleString("ru-RU")} ₸`;
 
-const fmtMoneyAxis = (n: number): string => {
-    if (Math.abs(n) >= 1_000_000)
-        return `${(n / 1_000_000).toLocaleString("ru-RU", { maximumFractionDigits: 1 })}M`;
-    if (Math.abs(n) >= 1_000) return `${Math.round(n / 1_000)}K`;
-    return String(Math.round(n));
-};
+const fmtMoneyAxis = (n: number): string => Math.round(n).toLocaleString("ru-RU");
 
 const fmtNumber = (n: number): string => n.toLocaleString("ru-RU");
 

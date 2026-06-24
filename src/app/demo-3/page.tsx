@@ -26,13 +26,7 @@ const DOWNLOADS: { file: string; desc: string; path: string }[] = [
     },
 ];
 
-const fmtMoney = (n: number): string => {
-    if (Math.abs(n) >= 1_000_000)
-        return `${(n / 1_000_000).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} млн ₸`;
-    if (Math.abs(n) >= 1_000)
-        return `${(n / 1_000).toLocaleString("ru-RU", { maximumFractionDigits: 0 })} тыс ₸`;
-    return `${Math.round(n).toLocaleString("ru-RU")} ₸`;
-};
+const fmtMoney = (n: number): string => `${Math.round(n).toLocaleString("ru-RU")} ₸`;
 
 const fmtNumber = (n: number): string => n.toLocaleString("ru-RU");
 
