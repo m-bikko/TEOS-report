@@ -100,7 +100,7 @@ WHERE date BETWEEN $from AND $to;
 |---|---|
 | Всего заказов | `totalShiftsCount` (из summary-эндпоинта) |
 | Всего выплат | `events.length` |
-| Средняя стоимость заказа | `Σ amount / totalShiftsCount` |
+| Среднее значение выплаты | `Σ amount / events.length` |
 
 ### На каждом графике (правый сайдбар)
 

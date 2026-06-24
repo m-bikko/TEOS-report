@@ -52,7 +52,7 @@ export default function Demo3Page() {
     const prosperSum = prosperEvents.reduce((s, e) => s + e.amount, 0);
     const totalPayments = events.length;
     const totalSum = gphSum + prosperSum;
-    const avgCostPerShift = totalShiftsCount > 0 ? totalSum / totalShiftsCount : 0;
+    const avgPayment = totalPayments > 0 ? totalSum / totalPayments : 0;
 
     const sampleEventJson = JSON.stringify(events.slice(0, 3), null, 2);
 
@@ -112,9 +112,9 @@ export default function Demo3Page() {
                         icon={<Banknote className="h-3.5 w-3.5" />}
                     />
                     <TopKpi
-                        label="Средняя стоимость заказа"
-                        value={fmtMoney(avgCostPerShift)}
-                        hint="total_payments_sum / total_shifts_count"
+                        label="Среднее значение выплаты"
+                        value={fmtMoney(avgPayment)}
+                        hint="total_payments_sum / total_payments"
                         accent="#6B007B"
                         icon={<Calculator className="h-3.5 w-3.5" />}
                     />
@@ -219,9 +219,9 @@ Response 200:
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td>Средняя стоимость заказа</td>
+                                    <td>Среднее значение выплаты</td>
                                     <td className="text-muted-foreground">
-                                        <code className="text-[11px]">Σ amount / totalShiftsCount</code>
+                                        <code className="text-[11px]">Σ amount / events.length</code>
                                     </td>
                                 </tr>
                                 <tr>
