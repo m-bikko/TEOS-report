@@ -19,8 +19,8 @@ const FILE_PATH_LABEL: Record<string, string> = {
 
 /**
  * Демо-страница: воронка смен на мок-данных.
- * Никакого API/CSV — данные генерируются детерминированно в mockData.ts
- * Цель — показать формат бэк-ответа и фронтовую реализацию.
+ * Никакого API/CSV - данные генерируются детерминированно в mockData.ts
+ * Цель - показать формат бэк-ответа и фронтовую реализацию.
  */
 export default function DemoPage() {
     const data = generateMockFunnel();
@@ -87,7 +87,7 @@ Response 200:
                         </pre>
                         <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
                             <li>
-                                Пропуски в датах допустимы — фронт не дорисует за бэк, бары будут только в
+                                Пропуски в датах допустимы - фронт не дорисует за бэк, бары будут только в
                                 те дни, что пришли.
                             </li>
                             <li>
@@ -97,7 +97,7 @@ Response 200:
                                 <code className="bg-muted px-1 py-0.5 rounded text-[11px]">attended</code>{" "}
                                 иногда может быть больше{" "}
                                 <code className="bg-muted px-1 py-0.5 rounded text-[11px]">taken</code> (исполнитель
-                                пришёл без записи) — это нормально.
+                                пришёл без записи) - это нормально.
                             </li>
                         </ul>
                     </section>
@@ -108,10 +108,10 @@ Response 200:
                             <li>
                                 <b>recharts 3.x</b> ·{" "}
                                 <code className="bg-muted px-1 py-0.5 rounded text-[11px]">ComposedChart</code>{" "}
-                                — гибрид бар-чарта и линий в одном поле
+                                - гибрид бар-чарта и линий в одном поле
                             </li>
                             <li>
-                                <b>Одна ось Y</b> для всех 4 серий — пропорции показываются честно.
+                                <b>Одна ось Y</b> для всех 4 серий - пропорции показываются честно.
                                 Штрафы/отмены идут низко (их реально мало относительно смен).
                                 Не используем dual-axis, чтобы штраф в 137 не выглядел выше столбика смен в 900.
                             </li>
@@ -137,7 +137,7 @@ Response 200:
 <FunnelMockChart data={data} />`}
                         </pre>
                         <p className="text-xs text-muted-foreground pt-2 border-t">
-                            Файлы компоненты (клик — скачать):
+                            Файлы компоненты (клик - скачать):
                         </p>
                         <ul className="text-xs space-y-1.5">
                             {DOWNLOADS.map((d) => (
@@ -152,7 +152,7 @@ Response 200:
                                             {FILE_PATH_LABEL[d.file]}
                                         </code>
                                     </a>
-                                    <span className="text-muted-foreground">— {d.desc}</span>
+                                    <span className="text-muted-foreground">- {d.desc}</span>
                                 </li>
                             ))}
                         </ul>
@@ -185,7 +185,7 @@ Response 200:
                             {" "}«success» ∪ «fine» ∪ «zero_production»).
                         </li>
                         <li>
-                            Если периодов в фильтре больше 30 — на клиенте сагрегируй в недели/месяцы
+                            Если периодов в фильтре больше 30 - на клиенте сагрегируй в недели/месяцы
                             тем же утильным{" "}
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">aggregateByPeriod()</code>,
                             который уже используется в V2.

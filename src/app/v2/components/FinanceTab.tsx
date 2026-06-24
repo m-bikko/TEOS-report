@@ -167,7 +167,7 @@ export function FinanceTab({
                                         <td className="py-1 px-1 font-mono">{u.userId}</td>
                                         <td className="py-1 px-1 text-right">{fmtMoney(u.net)}</td>
                                         <td className="py-1 px-1 text-right">{u.shifts}</td>
-                                        <td className="py-1 px-1 text-right">{u.fines > 0 ? u.fines : "—"}</td>
+                                        <td className="py-1 px-1 text-right">{u.fines > 0 ? u.fines : "-"}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -180,7 +180,7 @@ export function FinanceTab({
                 title="Персональный баланс юзера"
                 subtitle={
                     selectedUserId != null
-                        ? `User ID ${selectedUserId} — хронология балансов`
+                        ? `User ID ${selectedUserId} - хронология балансов`
                         : "Выберите юзера в таблице или введите ID"
                 }
                 right={

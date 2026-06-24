@@ -181,7 +181,7 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
     const chartSubtitle =
         viewMode === "hours"
             ? "type=1 → production · type=2,3,4 → назначения × 9ч"
-            : `Стек по статусу · Y — количество ${viewLabel}`;
+            : `Стек по статусу · Y - количество ${viewLabel}`;
     const tickFormatter = (v: string) => formatPeriodLabel(v, period);
     const PERIOD_ORDER: Period[] = ["day", "week", "month", "year"];
 
@@ -325,14 +325,14 @@ export function FunnelTab({ data, loading }: { data: FunnelData | null; loading:
                     icon={<Clock className="h-3.5 w-3.5" />}
                 />
                 <KpiCard
-                    label="Часы — часовой тариф (type 1)"
+                    label="Часы - часовой тариф (type 1)"
                     value={fmtNumber(data.overview.hoursHourly, 1)}
                     subtitle={`${fmtNumber(data.overview.hourlyAssignments)} назн. · production напрямую`}
                     accentColor={POWER_BI_COLORS.teal}
                     icon={<Clock className="h-3.5 w-3.5" />}
                 />
                 <KpiCard
-                    label="Часы — остальные (2,3,4)"
+                    label="Часы - остальные (2,3,4)"
                     value={fmtNumber(data.overview.hoursFlat, 0)}
                     subtitle={`${fmtNumber(data.overview.flatAssignments)} назн. × 9ч${data.overview.unknownTariffAssignments > 0 ? ` · ${fmtNumber(data.overview.unknownTariffAssignments)} без тарифа` : ""}`}
                     accentColor={POWER_BI_COLORS.orange}

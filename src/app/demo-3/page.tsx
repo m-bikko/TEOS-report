@@ -108,17 +108,17 @@ export default function Demo3Page() {
                     />
                 </div>
 
-                {/* График 1 — ГПХ */}
+                {/* График 1 - ГПХ */}
                 <PaymentsChart
                     title={`Оплата по ${CHANNEL_LABEL.gph}`}
-                    subtitle="Линии = top-5 партнёров · Y — сумма выплат за день · Х — дата проведения выплаты (не дата заказа)"
+                    subtitle="Линии = top-5 партнёров · Y - сумма выплат за день · Х - дата проведения выплаты (не дата заказа)"
                     events={gphEvents}
                 />
 
-                {/* График 2 — Prosper Pay */}
+                {/* График 2 - Prosper Pay */}
                 <PaymentsChart
                     title={`Оплата через ${CHANNEL_LABEL.prosper}`}
-                    subtitle="Линии = top-5 партнёров · Y — сумма выплат за день · Х — дата проведения выплаты · комиссия 5%"
+                    subtitle="Линии = top-5 партнёров · Y - сумма выплат за день · Х - дата проведения выплаты · комиссия 5%"
                     events={prosperEvents}
                     commissionPct={5}
                 />
@@ -129,7 +129,7 @@ export default function Demo3Page() {
                         <h2 className="text-sm font-semibold">1. Формат данных от бэка</h2>
                         <p className="text-xs text-muted-foreground">
                             Один эндпоинт отдаёт массив событий выплат за период.
-                            Каждое событие — одна транзакция, ключевые поля: дата проведения
+                            Каждое событие - одна транзакция, ключевые поля: дата проведения
                             выплаты, партнёр, сумма, канал.
                         </p>
                         <pre className="text-[11px] leading-snug bg-muted/60 rounded p-3 overflow-x-auto">
@@ -160,7 +160,7 @@ Response 200:
                         </pre>
                         <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
                             <li>
-                                <b>paymentDate</b> — это <i>дата проведения</i> (в TEOS:{" "}
+                                <b>paymentDate</b> - это <i>дата проведения</i> (в TEOS:{" "}
                                 <code className="bg-muted px-1 py-0.5 rounded text-[11px]">
                                     balance_log.created_at::date
                                 </code>{" "}
@@ -169,12 +169,12 @@ Response 200:
                             </li>
                             <li>
                                 <b>channel</b> определяется типом договора у юзера:{" "}
-                                <code className="bg-muted px-1 py-0.5 rounded text-[11px]">gph</code> —
+                                <code className="bg-muted px-1 py-0.5 rounded text-[11px]">gph</code> -
                                 договор ГПХ, <code className="bg-muted px-1 py-0.5 rounded text-[11px]">prosper</code>{" "}
-                                — выплата через Prosper Pay (для самозанятых).
+                                - выплата через Prosper Pay (для самозанятых).
                             </li>
                             <li>
-                                Сортировка и группировка по дате — на клиенте через{" "}
+                                Сортировка и группировка по дате - на клиенте через{" "}
                                 <code className="bg-muted px-1 py-0.5 rounded text-[11px]">useMemo</code>.
                             </li>
                         </ul>
@@ -183,7 +183,7 @@ Response 200:
                     <section className="border border-border rounded-sm bg-card p-4 space-y-3">
                         <h2 className="text-sm font-semibold">2. Расчёт KPI</h2>
                         <p className="text-xs text-muted-foreground">
-                            Один датасет — много метрик. Считаются в одном проходе по массиву
+                            Один датасет - много метрик. Считаются в одном проходе по массиву
                             событий через <code className="bg-muted px-1 py-0.5 rounded text-[11px]">useMemo</code>.
                         </p>
                         <table className="text-xs w-full">
@@ -248,16 +248,16 @@ Response 200:
                     <h2 className="text-sm font-semibold">3. Фронт-стек</h2>
                     <ul className="text-xs space-y-1.5">
                         <li>
-                            <b>recharts 3.x</b> — <code className="bg-muted px-1 py-0.5 rounded text-[11px]">LineChart</code>,
+                            <b>recharts 3.x</b> - <code className="bg-muted px-1 py-0.5 rounded text-[11px]">LineChart</code>,
                             одна <code className="bg-muted px-1 py-0.5 rounded text-[11px]">&lt;Line&gt;</code> на партнёра
                         </li>
                         <li>
-                            <b>5 партнёров</b> — захардкожены в{" "}
+                            <b>5 партнёров</b> - захардкожены в{" "}
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">PARTNERS</code>{" "}
                             (id, name, color, scale). В проде получай со своего эндпоинта.
                         </li>
                         <li>
-                            <b>Одна ось Y</b> — все 5 линий в одной шкале (партнёры сопоставимы).
+                            <b>Одна ось Y</b> - все 5 линий в одной шкале (партнёры сопоставимы).
                             На оси формат через <code className="bg-muted px-1 py-0.5 rounded text-[11px]">fmtMoneyAxis</code>
                             («120K», «1.5M»).
                         </li>
@@ -269,7 +269,7 @@ Response 200:
                             <b>date-fns 4.x + ru</b> для подписей «01.01» / «1 января 2026»
                         </li>
                         <li>
-                            <b>tailwindcss 4</b> — grid-12, KPI-блоки на col-3 справа
+                            <b>tailwindcss 4</b> - grid-12, KPI-блоки на col-3 справа
                         </li>
                     </ul>
                     <p className="text-xs text-muted-foreground pt-2 border-t">
@@ -324,7 +324,7 @@ const prosperEvents = events.filter(e => e.channel === "prosper");
                                     <Download className="h-3 w-3" />
                                     <code className="bg-muted px-1 py-0.5 rounded text-[11px]">{d.path}</code>
                                 </a>
-                                <span className="text-muted-foreground">— {d.desc}</span>
+                                <span className="text-muted-foreground">- {d.desc}</span>
                             </li>
                         ))}
                     </ul>
@@ -337,24 +337,24 @@ const prosperEvents = events.filter(e => e.channel === "prosper");
                         <li>
                             Создай эндпоинт <code className="bg-muted px-1 py-0.5 rounded text-[11px]">/api/payments</code>{" "}
                             возвращающий <code className="bg-muted px-1 py-0.5 rounded text-[11px]">PaymentEvent[]</code>.
-                            Внутри — SELECT из{" "}
+                            Внутри - SELECT из{" "}
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">user_balance_log</code> с{" "}
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">type = 1</code> и
                             join со сменой/партнёром.
                         </li>
                         <li>
-                            Источник <code className="bg-muted px-1 py-0.5 rounded text-[11px]">channel</code> —
+                            Источник <code className="bg-muted px-1 py-0.5 rounded text-[11px]">channel</code> -
                             таблица договоров (ГПХ vs СМЗ) у юзера-получателя выплаты.
                         </li>
                         <li>
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">totalShiftsCount</code>{" "}
-                            — отдельный count из таблицы <code className="bg-muted px-1 py-0.5 rounded text-[11px]">shifts</code>
+                            - отдельный count из таблицы <code className="bg-muted px-1 py-0.5 rounded text-[11px]">shifts</code>
                             за период (с учётом status фильтра, если нужен).
                         </li>
                         <li>
                             Замени массив{" "}
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">PARTNERS</code>{" "}
-                            на динамический — например, GET <code className="bg-muted px-1 py-0.5 rounded text-[11px]">/api/v2/partners</code>{" "}
+                            на динамический - например, GET <code className="bg-muted px-1 py-0.5 rounded text-[11px]">/api/v2/partners</code>{" "}
                             и top-5 по выручке.
                         </li>
                         <li>
@@ -362,7 +362,7 @@ const prosperEvents = events.filter(e => e.channel === "prosper");
                             на fetch + useEffect в client-компоненте.
                         </li>
                         <li>
-                            Если периодов больше 30 дней — клиентская агрегация по неделям/месяцам через{" "}
+                            Если периодов больше 30 дней - клиентская агрегация по неделям/месяцам через{" "}
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">aggregateByPeriod()</code>{" "}
                             из <code className="bg-muted px-1 py-0.5 rounded text-[11px]">src/app/v2/components/period.ts</code>.
                         </li>

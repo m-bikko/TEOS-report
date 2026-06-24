@@ -78,7 +78,7 @@ export default function Demo2Page() {
                 {/* Инструкции */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <section className="border border-border rounded-sm bg-card p-4 space-y-3">
-                        <h2 className="text-sm font-semibold">1. Формат данных — Заказы по статусам</h2>
+                        <h2 className="text-sm font-semibold">1. Формат данных - Заказы по статусам</h2>
                         <pre className="text-[11px] leading-snug bg-muted/60 rounded p-3 overflow-x-auto">
                             {`GET /api/orders-by-status?from=…&to=…
 
@@ -108,7 +108,7 @@ Response 200:
                     </section>
 
                     <section className="border border-border rounded-sm bg-card p-4 space-y-3">
-                        <h2 className="text-sm font-semibold">2. Формат данных — Записи на заказ</h2>
+                        <h2 className="text-sm font-semibold">2. Формат данных - Записи на заказ</h2>
                         <pre className="text-[11px] leading-snug bg-muted/60 rounded p-3 overflow-x-auto">
                             {`GET /api/intake?from=…&to=…
 
@@ -136,7 +136,7 @@ Response 200:
                             </li>
                             <li>
                                 <code className="bg-muted px-1 py-0.5 rounded text-[11px]">signedAvr</code>{" "}
-                                — отдельный показатель, идёт ЛИНИЕЙ (не стек), пропорция к интейку = «покрытие
+                                - отдельный показатель, идёт ЛИНИЕЙ (не стек), пропорция к интейку = «покрытие
                                 АВР».
                             </li>
                         </ul>
@@ -148,15 +148,15 @@ Response 200:
                     <h2 className="text-sm font-semibold">3. Фронт-стек</h2>
                     <ul className="text-xs space-y-1.5">
                         <li>
-                            <b>recharts 3.x</b> — <code className="bg-muted px-1 py-0.5 rounded text-[11px]">BarChart</code> для Chart 1,{" "}
+                            <b>recharts 3.x</b> - <code className="bg-muted px-1 py-0.5 rounded text-[11px]">BarChart</code> для Chart 1,{" "}
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">ComposedChart</code> для Chart 2 (бары + линия)
                         </li>
                         <li>
-                            <b>Одна ось Y</b> на обоих графиках — пропорции честные. Стек по сериям через{" "}
+                            <b>Одна ось Y</b> на обоих графиках - пропорции честные. Стек по сериям через{" "}
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">stackId</code>.
                         </li>
                         <li>
-                            <b>Легенда справа</b> вместо встроенной снизу — в правой колонке{" "}
+                            <b>Легенда справа</b> вместо встроенной снизу - в правой колонке{" "}
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">col-span-3</code> с описанием и
                             кликабельным toggle (скрыть/показать серию).
                         </li>
@@ -183,7 +183,7 @@ Response 200:
                                     <Download className="h-3 w-3" />
                                     <code className="bg-muted px-1 py-0.5 rounded text-[11px]">{d.path}</code>
                                 </a>
-                                <span className="text-muted-foreground">— {d.desc}</span>
+                                <span className="text-muted-foreground">- {d.desc}</span>
                             </li>
                         ))}
                     </ul>
@@ -201,12 +201,12 @@ Response 200:
                             на fetch к своим эндпоинтам.
                         </li>
                         <li>
-                            На бэке для Chart 1 — group by{" "}
+                            На бэке для Chart 1 - group by{" "}
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">shifts.date, shifts.status</code>,
                             пивот в 6 колонок.
                         </li>
                         <li>
-                            Для Chart 2 — посчитай по дням: organic = записи, где источник = «приложение»,
+                            Для Chart 2 - посчитай по дням: organic = записи, где источник = «приложение»,
                             operator = записи где источник = «оператор», signedAvr = кол-во подписанных
                             АВР за день.
                         </li>
@@ -215,7 +215,7 @@ Response 200:
                             <code className="bg-muted px-1 py-0.5 rounded text-[11px]">page.tsx</code> своим.
                         </li>
                         <li>
-                            Если периодов &gt; 30 — на клиенте сагрегируй в недели/месяцы через тот же
+                            Если периодов &gt; 30 - на клиенте сагрегируй в недели/месяцы через тот же
                             утильный <code className="bg-muted px-1 py-0.5 rounded text-[11px]">aggregateByPeriod()</code>{" "}
                             из <code className="bg-muted px-1 py-0.5 rounded text-[11px]">src/app/v2/components/period.ts</code>.
                         </li>

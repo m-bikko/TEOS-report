@@ -205,7 +205,7 @@ export function VacanciesTab({ data, loading }: { data: VacanciesData | null; lo
                                             {v.title}
                                         </td>
                                         <td className="py-1 px-2 text-muted-foreground truncate max-w-[140px]">
-                                            {v.partnerTitle ?? "—"}
+                                            {v.partnerTitle ?? "-"}
                                         </td>
                                         <td className="py-1 px-2 text-right">
                                             {v.employees}/{v.totalEmployees}
@@ -242,7 +242,7 @@ export function VacanciesTab({ data, loading }: { data: VacanciesData | null; lo
                                             {v.title}
                                         </td>
                                         <td className="py-1 px-2 text-muted-foreground truncate max-w-[140px]">
-                                            {v.partnerTitle ?? "—"}
+                                            {v.partnerTitle ?? "-"}
                                         </td>
                                         <td className="py-1 px-2 text-right">{fmtMoney(v.costOneHour)}</td>
                                         <td className="py-1 px-2 text-right font-medium">{fmtMoney(v.costFull)}</td>

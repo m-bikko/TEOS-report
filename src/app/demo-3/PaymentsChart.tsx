@@ -5,18 +5,18 @@
  * Универсальная компонента «Выплаты по дням и партнёрам» (/demo-3).
  *
  * НА ЧЁМ:
- *   - recharts 3.x — LineChart с N линиями (N = число партнёров)
- *   - date-fns 4.x + ru — подписи дат
- *   - tailwindcss 4 — раскладка
+ *   - recharts 3.x - LineChart с N линиями (N = число партнёров)
+ *   - date-fns 4.x + ru - подписи дат
+ *   - tailwindcss 4 - раскладка
  *
  * ВХОДНЫЕ ДАННЫЕ:
- *   events: PaymentEvent[]  — массив выплат за период, уже отфильтрованный по каналу
+ *   events: PaymentEvent[]  - массив выплат за период, уже отфильтрованный по каналу
  *
  * ЛЭЙАУТ:
  *   col-9: линейный график (одна линия на партнёра)
  *   col-3: справа сайдбар:
- *      [блок 1] — общие KPI по этой выборке (сумма / комиссия / среднее / count)
- *      [блок 2] — кликабельные партнёры с totals (toggle hide/show линии)
+ *      [блок 1] - общие KPI по этой выборке (сумма / комиссия / среднее / count)
+ *      [блок 2] - кликабельные партнёры с totals (toggle hide/show линии)
  * ──────────────────────────────────────────────────────────────────────────
  */
 
@@ -39,7 +39,7 @@ interface Props {
     title: string;
     subtitle: string;
     events: PaymentEvent[];
-    /** Если задан — справа покажется доп. строка «Комиссия (X%)» */
+    /** Если задан - справа покажется доп. строка «Комиссия (X%)» */
     commissionPct?: number;
 }
 
@@ -52,7 +52,7 @@ const fmtNumber = (n: number): string => n.toLocaleString("ru-RU");
 export function PaymentsChart({ title, subtitle, events, commissionPct }: Props) {
     const [hidden, setHidden] = useState<Set<number>>(new Set());
 
-    // Собрать дневную сетку: для каждой даты — сумма по каждому partnerId
+    // Собрать дневную сетку: для каждой даты - сумма по каждому partnerId
     const series = useMemo(() => {
         const byDate = new Map<string, Record<string, number>>();
         for (const e of events) {
@@ -191,7 +191,7 @@ export function PaymentsChart({ title, subtitle, events, commissionPct }: Props)
 
                     {/* Блок 2: партнёры (toggle) */}
                     <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium mt-1">
-                        Партнёры (клик — скрыть/показать)
+                        Партнёры (клик - скрыть/показать)
                     </div>
                     {PARTNERS.map((p) => {
                         const isHidden = hidden.has(p.id);

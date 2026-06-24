@@ -178,7 +178,7 @@ export default function V2Page() {
                         {!dimensions.hasBranches && (
                             <span className="text-amber-600 flex items-center gap-1">
                                 <AlertTriangle className="h-3 w-3" />
-                                branches.csv не загружен — фильтр по компании отключён
+                                branches.csv не загружен - фильтр по компании отключён
                             </span>
                         )}
                     </div>

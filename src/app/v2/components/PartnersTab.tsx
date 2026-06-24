@@ -137,9 +137,9 @@ export function PartnersTab({ data, loading }: { data: PartnersData | null; load
                             {data.rows.map((p, i) => (
                                 <tr key={p.id} className={i % 2 ? "bg-muted/20" : ""}>
                                     <td className="py-1 px-2 font-medium">{p.title}</td>
-                                    <td className="py-1 px-2 text-muted-foreground">{p.cityTitle ?? "—"}</td>
-                                    <td className="py-1 px-2 text-right">{p.commissionRate != null ? fmtNumber(p.commissionRate, 2) : "—"}</td>
-                                    <td className="py-1 px-2 text-right">{p.ndsRate != null ? fmtNumber(p.ndsRate, 2) : "—"}</td>
+                                    <td className="py-1 px-2 text-muted-foreground">{p.cityTitle ?? "-"}</td>
+                                    <td className="py-1 px-2 text-right">{p.commissionRate != null ? fmtNumber(p.commissionRate, 2) : "-"}</td>
+                                    <td className="py-1 px-2 text-right">{p.ndsRate != null ? fmtNumber(p.ndsRate, 2) : "-"}</td>
                                     <td className="py-1 px-2 text-right">{p.companiesCount}</td>
                                     <td className="py-1 px-2 text-right">{p.vacanciesCount}</td>
                                     <td className="py-1 px-2 text-right">{p.shiftsCount}</td>

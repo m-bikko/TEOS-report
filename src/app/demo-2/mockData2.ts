@@ -2,10 +2,10 @@
  * Детерминированный генератор мок-данных для /demo-2.
  *
  * Содержит 2 датасета:
- *   - OrderDayPoint  — для графика «Заказы по дням и статусам» (Chart 1)
- *   - IntakeDayPoint — для графика «Записи на заказ» (Chart 2)
+ *   - OrderDayPoint  - для графика «Заказы по дням и статусам» (Chart 1)
+ *   - IntakeDayPoint - для графика «Записи на заказ» (Chart 2)
  *
- * Зависят только от индекса дня — SSR и клиент рендерят одно и то же.
+ * Зависят только от индекса дня - SSR и клиент рендерят одно и то же.
  */
 
 const SEED = 20_260_101;
@@ -31,7 +31,7 @@ function addDays(iso: string, n: number): string {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// CHART 1 — Заказы по дням и статусам
+// CHART 1 - Заказы по дням и статусам
 // ════════════════════════════════════════════════════════════════════════
 
 /** Один день: заказы в каждом из 6 статусов */
@@ -58,12 +58,12 @@ export function generateMockOrders(): OrderDayPoint[] {
     for (let i = 0; i < DAYS; i += 1) {
         const date = addDays(START_ISO, i);
 
-        // Большая часть заказов идёт в архив (старшие даты), новые — в наборе/работе.
+        // Большая часть заказов идёт в архив (старшие даты), новые - в наборе/работе.
         const totalBase = 240 + Math.round(rng() * 80);
         const archived = Math.round(totalBase * (0.65 + rng() * 0.1));
         const cancelled = Math.round(totalBase * (0.18 + rng() * 0.07));
 
-        // Остальные — небольшие "хвосты"
+        // Остальные - небольшие "хвосты"
         const inRecruiting = Math.round(rng() * 4);
         const inWork = Math.round(rng() * 3);
         const inApproval = Math.round(rng() * 8);
@@ -75,7 +75,7 @@ export function generateMockOrders(): OrderDayPoint[] {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// CHART 2 — Записи на заказ
+// CHART 2 - Записи на заказ
 // ════════════════════════════════════════════════════════════════════════
 
 /** Один день: записи на заказ + подписанные АВР */
@@ -96,9 +96,9 @@ export function generateMockIntake(): IntakeDayPoint[] {
     for (let i = 0; i < DAYS; i += 1) {
         const date = addDays(START_ISO, i);
 
-        // Organic — основная часть (60–75% всех записей), 400–700 в день
+        // Organic - основная часть (60–75% всех записей), 400–700 в день
         const organicIntake = Math.round(420 + rng() * 280);
-        // Operator — 30–45% от organic, 150–340
+        // Operator - 30–45% от organic, 150–340
         const operatorIntake = Math.round(organicIntake * (0.30 + rng() * 0.15));
 
         const total = organicIntake + operatorIntake;
