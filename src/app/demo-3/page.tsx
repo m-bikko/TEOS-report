@@ -1,12 +1,7 @@
 import Link from "next/link";
-import { ExternalLink, FlaskConical, Download, ShoppingCart, Banknote, Calculator } from "lucide-react";
+import { ExternalLink, FlaskConical, Download, Wallet, Banknote, Calculator } from "lucide-react";
 import { PaymentsChart } from "./PaymentsChart";
-import {
-    generateMockPayments,
-    computeTotalShiftsCount,
-    PARTNERS,
-    CHANNEL_LABEL,
-} from "./mockData3";
+import { generateMockPayments, PARTNERS, CHANNEL_LABEL } from "./mockData3";
 
 const DOWNLOADS: { file: string; desc: string; path: string }[] = [
     {
@@ -43,7 +38,6 @@ const fmtNumber = (n: number): string => n.toLocaleString("ru-RU");
 
 export default function Demo3Page() {
     const events = generateMockPayments();
-    const totalShiftsCount = computeTotalShiftsCount(events);
 
     const gphEvents = events.filter((e) => e.channel === "gph");
     const prosperEvents = events.filter((e) => e.channel === "prosper");
@@ -98,11 +92,11 @@ export default function Demo3Page() {
                 {/* Верхний KPI-ряд (агрегаты обоих каналов) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <TopKpi
-                        label="Всего заказов за период"
-                        value={fmtNumber(totalShiftsCount)}
-                        hint="total_shifts_count (включая ещё не оплаченные)"
+                        label="Общая сумма выплат"
+                        value={fmtMoney(totalSum)}
+                        hint={`ГПХ (${fmtMoney(gphSum)}) + СМЗ (${fmtMoney(prosperSum)})`}
                         accent="#118DFF"
-                        icon={<ShoppingCart className="h-3.5 w-3.5" />}
+                        icon={<Wallet className="h-3.5 w-3.5" />}
                     />
                     <TopKpi
                         label="Всего выплат за период"
@@ -207,9 +201,9 @@ Response 200:
                             </thead>
                             <tbody className="[&_tr]:border-b [&_tr:last-child]:border-0 [&_td]:py-1.5 [&_td]:pr-2 [&_td]:align-top">
                                 <tr>
-                                    <td>Всего заказов</td>
+                                    <td>Общая сумма выплат</td>
                                     <td className="text-muted-foreground">
-                                        <code className="text-[11px]">totalShiftsCount</code> (из эндпоинта)
+                                        <code className="text-[11px]">Σ amount</code> (по всем событиям)
                                     </td>
                                 </tr>
                                 <tr>

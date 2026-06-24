@@ -51,19 +51,7 @@ type Response = PaymentEvent[];
 ]
 ```
 
-### 2.2. Сводка (отдельным эндпоинтом)
-
-```http
-GET /api/payments/summary?from=…&to=…
-```
-
-```json
-{ "totalShiftsCount": 12453 }
-```
-
-`totalShiftsCount` — общее число заказов (смен) за период, **включая ещё не оплаченные**. Используется для верхнего KPI «Средняя стоимость заказа = total_payments_sum / totalShiftsCount».
-
-### 2.3. Откуда брать (псевдо-SQL для TEOS)
+### 2.2. Откуда брать (псевдо-SQL для TEOS)
 
 ```sql
 -- /api/payments
@@ -81,14 +69,11 @@ JOIN shifts s ON s.id = bl.shift_id
 JOIN users u ON u.id = bl.user_id
 WHERE bl.type = 1
   AND bl.created_at BETWEEN $from AND $to + interval '1 day';
-
--- /api/payments/summary
-SELECT COUNT(*) AS "totalShiftsCount"
-FROM shifts
-WHERE date BETWEEN $from AND $to;
 ```
 
 Где `resolve_partner()` — твоя функция-резолвер партнёра по вакансии смены (см. `src/lib/v2/joins.ts:resolvePartnerForVacancy()`).
+
+Один эндпоинт — все 3 верхних KPI и оба графика считаются на клиенте из одного массива `PaymentEvent[]`.
 
 ---
 
@@ -98,7 +83,7 @@ WHERE date BETWEEN $from AND $to;
 
 | Метрика | Формула |
 |---|---|
-| Всего заказов | `totalShiftsCount` (из summary-эндпоинта) |
+| Общая сумма выплат | `Σ amount` (по всем событиям) |
 | Всего выплат | `events.length` |
 | Среднее значение выплаты | `Σ amount / events.length` |
 
@@ -218,14 +203,10 @@ src/app/demo-3/
 2. Удали мок-генератор. Делай fetch:
    ```tsx
    const [events, setEvents] = useState<PaymentEvent[]>([]);
-   const [totalShifts, setTotalShifts] = useState(0);
    useEffect(() => {
        fetch(`/api/payments?from=${from}&to=${to}`)
            .then((r) => r.json())
            .then(setEvents);
-       fetch(`/api/payments/summary?from=${from}&to=${to}`)
-           .then((r) => r.json())
-           .then((s) => setTotalShifts(s.totalShiftsCount));
    }, [from, to]);
    ```
 3. Группировка по каналу — на клиенте: `events.filter(e => e.channel === 'gph')`.
@@ -235,7 +216,6 @@ src/app/demo-3/
 ## 7. Чеклист интеграции
 
 - [ ] Эндпоинт `/api/payments` отдаёт `PaymentEvent[]` по контракту
-- [ ] Эндпоинт `/api/payments/summary` отдаёт `{ totalShiftsCount }`
 - [ ] `paymentDate` = дата проведения выплаты, **не** дата заказа
 - [ ] `channel` правильно вычисляется из типа договора юзера (ГПХ / СМЗ)
 - [ ] `PARTNERS` — динамические top-5 (не захардкожены)

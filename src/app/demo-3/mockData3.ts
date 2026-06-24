@@ -50,10 +50,6 @@ const SEED = 20_260_101;
 const DAYS = 30;
 const START_ISO = "2026-01-01";
 
-/** Коэффициент: общее число заказов чуть больше числа выплат
- *  (~7% заказов в периоде ещё не оплачены) */
-const UNPAID_SHIFTS_RATIO = 1.07;
-
 function mulberry32(seed: number): () => number {
     let state = seed;
     return () => {
@@ -114,7 +110,3 @@ export function generateMockPayments(): PaymentEvent[] {
     return events;
 }
 
-export function computeTotalShiftsCount(events: PaymentEvent[]): number {
-    const uniqueShifts = new Set(events.map((e) => e.shiftId)).size;
-    return Math.round(uniqueShifts * UNPAID_SHIFTS_RATIO);
-}
