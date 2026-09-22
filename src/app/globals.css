@@ -123,3 +123,148 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Указатель стенда (/) — тёмная обложка с технической типографикой.
+   Стили с префиксом .hub- живут только на этой странице.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.hub {
+    --hub-ink: #0b0b0a;
+    --hub-paper: #edeae3;
+    --hub-dim: #7a776f;
+    --hub-rule: #26251f;
+    /* Обводка номеров чуть светлее хайрлайнов, иначе они пропадают */
+    --hub-numeral: #3a362e;
+    background-color: var(--hub-ink);
+    color: var(--hub-paper);
+    min-height: 100vh;
+    position: relative;
+    isolation: isolate;
+}
+
+/* Плотная сетка миллиметровки — фон дышит, но не отвлекает */
+.hub::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background-image:
+        linear-gradient(to right, rgba(237, 234, 227, 0.028) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(237, 234, 227, 0.028) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 120% 80% at 50% 0%, #000 35%, transparent 100%);
+}
+
+/* Зерно поверх — убирает цифровую стерильность плоской заливки */
+.hub::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.16;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+.hub-display {
+    font-family: var(--font-unbounded), var(--font-open-sans), sans-serif;
+}
+
+.hub-mono {
+    font-family: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+/* Появление с каскадом: один хорошо поставленный вход вместо россыпи микроанимаций */
+.hub-rise {
+    opacity: 0;
+    transform: translateY(14px);
+    animation: hub-rise 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+@keyframes hub-rise {
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* Строка указателя: акцентная линия въезжает слева, номер и стрелка оживают */
+.hub-row {
+    position: relative;
+    border-top: 1px solid var(--hub-rule);
+    transition: background-color 260ms ease;
+}
+
+.hub-row::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: -1px;
+    height: 1px;
+    width: 0;
+    background: var(--hub-accent);
+    transition: width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hub-row:hover {
+    background-color: rgba(237, 234, 227, 0.035);
+}
+
+.hub-row:hover::before,
+.hub-row:focus-visible::before {
+    width: 100%;
+}
+
+.hub-row:hover .hub-index,
+.hub-row:focus-visible .hub-index {
+    color: var(--hub-accent);
+    -webkit-text-stroke-color: var(--hub-accent);
+}
+
+.hub-row:hover .hub-path,
+.hub-row:focus-visible .hub-path {
+    color: var(--hub-accent);
+}
+
+.hub-row:hover .hub-arrow,
+.hub-row:focus-visible .hub-arrow {
+    color: var(--hub-accent);
+    transform: translate(3px, -3px);
+}
+
+.hub-row:focus-visible {
+    outline: none;
+    background-color: rgba(237, 234, 227, 0.06);
+}
+
+/* Полый номер — держит ритм колонки, не перетягивая внимание с заголовка */
+.hub-index {
+    font-family: var(--font-unbounded), sans-serif;
+    color: transparent;
+    -webkit-text-stroke: 1px var(--hub-numeral);
+    transition:
+        color 260ms ease,
+        -webkit-text-stroke-color 260ms ease;
+}
+
+.hub-arrow {
+    color: var(--hub-dim);
+    transition:
+        color 260ms ease,
+        transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hub-rise {
+        animation: none;
+        opacity: 1;
+        transform: none;
+    }
+
+    .hub-row::before,
+    .hub-arrow {
+        transition: none;
+    }
+}

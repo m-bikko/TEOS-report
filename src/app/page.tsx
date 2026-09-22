@@ -1,290 +1,242 @@
+import { ArrowUpRight } from "lucide-react";
 
-"use client"
+/**
+ * Указатель стенда. Единственная задача страницы — за один взгляд показать,
+ * что на стенде есть, и увести на нужную страницу в новой вкладке, чтобы
+ * сам указатель оставался открытым во время обхода.
+ *
+ * Серверный компонент: ни состояния, ни эффектов — всё движение на CSS.
+ */
 
-import { useEffect, useState, useMemo } from "react"
-import { FilterBar } from "@/components/dashboard/FilterBar"
-import { KPIGrid } from "@/components/dashboard/KPIGrid"
-import { ChartsSection } from "@/components/dashboard/ChartsSection"
-import { ShiftRecord, FilterState, fetchAndParseData, filterData, calculateKPIs } from "@/lib/data"
-import { Loader2, RefreshCw, Users, Activity, BarChart3 } from "lucide-react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { UsersView } from "@/components/dashboard/UsersView"
+interface Entry {
+    path: string;
+    title: string;
+    note: string;
+    tag?: string;
+}
 
-export default function DashboardPage() {
-  const [data, setData] = useState<ShiftRecord[]>([])
-  const [loading, setLoading] = useState(true)
+interface Section {
+    label: string;
+    caption: string;
+    accent: string;
+    entries: Entry[];
+}
 
-  const [filters, setFilters] = useState<FilterState>({
-    dateRange: {
-      from: new Date(new Date().getFullYear(), 0, 1), // Jan 1 of Current Year
-      to: new Date()
+const SECTIONS: Section[] = [
+    {
+        label: "Дашборды",
+        caption: "Рабочие страницы на реальных данных",
+        accent: "#4a9dff",
+        entries: [
+            {
+                path: "/dashboard",
+                title: "Дашборд по сменам",
+                note: "Фильтры по периоду, компании, городу и тарифу. KPI, графики и вкладка «Пользователи». Данные подтягиваются через API.",
+            },
+            {
+                path: "/v2",
+                title: "Аналитика V2",
+                note: "Четыре среза: воронка, финансы, партнёры, вакансии. Общая панель фильтров, датасеты из second-part/.",
+            },
+        ],
     },
-    company: "all",
-    city: "all",
-    address: "all",
-    tariffType: "all"
-  });
+    {
+        label: "Витрины графиков",
+        caption: "Прототипы на детерминированных моках с образцом ответа бэкенда",
+        accent: "#f4b942",
+        entries: [
+            {
+                path: "/demo",
+                title: "Воронка смен",
+                note: "График воронки плюс KPI-ряд. Рядом лежит пример JSON и выгрузка исходников.",
+            },
+            {
+                path: "/demo-2",
+                title: "Заказы и записи",
+                note: "Заказы по дням и статусам, записи на заказ с разделением organic / operator и линией АВР.",
+            },
+            {
+                path: "/demo-3",
+                title: "Выплаты партнёрам",
+                note: "Суммы по каналам ГПХ и Prosper, разбивка по партнёрам, сводка по среднему платежу.",
+            },
+        ],
+    },
+    {
+        label: "Техподдержка",
+        caption: "Сквозной прототип: дерево вопросов, чат, канбан оператора",
+        accent: "#45d483",
+        entries: [
+            {
+                path: "/support-mobile",
+                title: "Мобильные экраны",
+                note: "Шаги дерева частых вопросов покадрово и живое демо — по дереву можно кликать на любую глубину.",
+                tag: "интерактив",
+            },
+            {
+                path: "/support-chat-builder",
+                title: "Конструктор дерева чата",
+                note: "Сборка дерева в ERP: перетаскивание узлов, редактор, превью в телефоне, версии, импорт-экспорт.",
+                tag: "интерактив",
+            },
+            {
+                path: "/support-admin",
+                title: "Канбан оператора",
+                note: "Доска обращений, модалы чата, секундомеры, метрика решённых автоответом.",
+            },
+            {
+                path: "/support-user",
+                title: "Кабинет клиента B2B",
+                note: "Список обращений, чат, закрытое обращение только на чтение, форма создания.",
+            },
+        ],
+    },
+];
 
-  /* State */
-  const [metricMode, setMetricMode] = useState<"hours" | "volume">("hours");
+const TOTAL = SECTIONS.reduce((sum, s) => sum + s.entries.length, 0);
 
-  // Shifts Sync State
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncProgress, setSyncProgress] = useState(0);
+export default function HubPage() {
+    // Сквозная нумерация строк и общий счётчик каскада появления.
+    let index = 0;
+    let step = 0;
 
-  // Users State
-  const [activeTab, setActiveTab] = useState("shifts");
-  const [usersData, setUsersData] = useState<any>(null);
-  const [usersLoading, setUsersLoading] = useState(true);
-  const [isSyncingUsers, setIsSyncingUsers] = useState(false);
-  const [syncProgressUsers, setSyncProgressUsers] = useState(0);
-
-  const loadData = async () => {
-    // Only set main loading if no data yet
-    if (data.length === 0) setLoading(true)
-    try {
-      const records = await fetchAndParseData()
-      setData(records)
-    } catch (error) {
-      console.error("Failed to load data", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadUsers = async () => {
-    setUsersLoading(true);
-    try {
-      const res = await fetch('/api/analytics/users');
-      if (res.ok) {
-        const uData = await res.json();
-        setUsersData(uData);
-      }
-    } catch (e) {
-      console.error("Failed to load users", e);
-    } finally {
-      setUsersLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadData();
-    loadUsers();
-  }, [])
-
-  const handleSyncUsers = async () => {
-    setIsSyncingUsers(true);
-    setSyncProgressUsers(0);
-    // Fake progress simulation
-    const interval = setInterval(() => {
-      setSyncProgressUsers((prev) => {
-        if (prev >= 90) return prev;
-        return prev + 10;
-      });
-    }, 500);
-
-    try {
-      await fetch('/api/analytics/users?sync=true');
-      clearInterval(interval);
-      setSyncProgressUsers(100);
-      await new Promise(r => setTimeout(r, 500));
-      await loadUsers();
-    } catch (e) {
-      console.error("Users Sync failed", e);
-    } finally {
-      clearInterval(interval);
-      setIsSyncingUsers(false);
-      setSyncProgressUsers(0);
-    }
-  }
-
-  const handleSync = async () => {
-    setIsSyncing(true);
-    setSyncProgress(0);
-
-    // Fake progress simulation
-    const interval = setInterval(() => {
-      setSyncProgress((prev) => {
-        if (prev >= 90) return prev;
-        return prev + 10;
-      });
-    }, 500);
-
-    try {
-      await fetch('/api/shifts?sync=true');
-      clearInterval(interval);
-      setSyncProgress(100);
-
-      // Short delay to show 100%
-      await new Promise(r => setTimeout(r, 500));
-
-      await loadData(); // Reload data after sync
-    } catch (e) {
-      console.error("Sync failed", e);
-    } finally {
-      clearInterval(interval);
-      setIsSyncing(false);
-      setSyncProgress(0);
-    }
-  };
-
-
-
-  const filteredData = useMemo(() => {
-    // 1. Basic Filters
-    const basicFiltered = filterData(data, filters);
-
-    // 2. Metric Mode Filter
-    // "Hours" -> only TariffType 1
-    // "Volume" -> everything EXCEPT TariffType 1
-    return basicFiltered.filter(d => {
-      if (metricMode === 'hours') {
-        return String(d.tariffType) === '1';
-      } else {
-        return String(d.tariffType) !== '1';
-      }
-    });
-  }, [data, filters, metricMode])
-
-  const stats = useMemo(() => {
-    return calculateKPIs(filteredData)
-  }, [filteredData])
-
-  if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Загрузка данных...</span>
-      </div>
-    )
-  }
+        <div className="hub">
+            <div className="mx-auto max-w-[1180px] px-6 sm:px-10 pb-24">
+                <header className="pt-20 sm:pt-28 pb-14 sm:pb-20">
+                    <div className="hub-rise" style={{ "--i": step++ } as React.CSSProperties}>
+                        <div className="hub-mono text-[11px] tracking-[0.42em] uppercase text-[#7a776f]">
+                            TEOS · демо-стенд
+                        </div>
+                    </div>
 
-  return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-6 space-y-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col space-y-2">
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold tracking-tight">Аналитика TEOS</h1>
-                <Link
-                  href="/v2"
-                  className="text-xs px-2 py-1 rounded border border-primary/50 text-primary hover:bg-primary/10 flex items-center gap-1"
+                    <h1
+                        className="hub-display hub-rise mt-7 font-light leading-[0.88] tracking-[-0.03em] text-[clamp(3.2rem,11vw,8.5rem)]"
+                        style={{ "--i": step++ } as React.CSSProperties}
+                    >
+                        Указатель
+                    </h1>
+
+                    <div
+                        className="hub-rise mt-10 grid gap-8 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
+                        style={{ "--i": step++ } as React.CSSProperties}
+                    >
+                        <p className="max-w-[46ch] text-[15px] leading-relaxed text-[#a3a099]">
+                            Дашборды по сменам и финансам, витрины отдельных графиков и сквозной
+                            прототип техподдержки. Каждая ссылка открывается в новой вкладке —
+                            указатель остаётся под рукой.
+                        </p>
+
+                        <dl className="hub-mono grid grid-cols-2 gap-x-10 gap-y-3 text-[11px] sm:text-right">
+                            <dt className="text-[#7a776f] uppercase tracking-[0.18em]">страниц</dt>
+                            <dd className="tabular-nums">{TOTAL}</dd>
+                            <dt className="text-[#7a776f] uppercase tracking-[0.18em]">разделов</dt>
+                            <dd className="tabular-nums">{SECTIONS.length}</dd>
+                            <dt className="text-[#7a776f] uppercase tracking-[0.18em]">префиксы</dt>
+                            <dd>/ru /en → /</dd>
+                        </dl>
+                    </div>
+                </header>
+
+                <main className="space-y-16 sm:space-y-20">
+                    {SECTIONS.map((section) => (
+                        <section key={section.label}>
+                            <div
+                                className="hub-rise flex flex-wrap items-baseline gap-x-5 gap-y-1 pb-5"
+                                style={{ "--i": step++ } as React.CSSProperties}
+                            >
+                                <h2 className="hub-display text-[15px] font-medium tracking-[0.02em]">
+                                    <span
+                                        aria-hidden
+                                        className="mr-3 inline-block h-[7px] w-[7px] translate-y-[-2px] rounded-full"
+                                        style={{ backgroundColor: section.accent }}
+                                    />
+                                    {section.label}
+                                </h2>
+                                <p className="hub-mono text-[11px] text-[#7a776f]">{section.caption}</p>
+                            </div>
+
+                            <ul
+                                className="border-b border-[#26251f]"
+                                style={{ "--hub-accent": section.accent } as React.CSSProperties}
+                            >
+                                {section.entries.map((entry) => {
+                                    index += 1;
+                                    const number = String(index).padStart(2, "0");
+
+                                    return (
+                                        <li
+                                            key={entry.path}
+                                            className="hub-rise"
+                                            style={{ "--i": step++ } as React.CSSProperties}
+                                        >
+                                            <a
+                                                href={entry.path}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="hub-row grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-5 sm:gap-x-9 px-1 sm:px-3 py-6 sm:py-7"
+                                            >
+                                                <span
+                                                    aria-hidden
+                                                    className="hub-index select-none text-[26px] sm:text-[38px] font-light leading-none tabular-nums"
+                                                >
+                                                    {number}
+                                                </span>
+
+                                                <span className="min-w-0">
+                                                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                                                        <span className="hub-display text-[17px] sm:text-[21px] font-normal tracking-[-0.01em]">
+                                                            {entry.title}
+                                                        </span>
+                                                        {entry.tag && (
+                                                            <span
+                                                                className="hub-mono rounded-full border px-2 py-[2px] text-[9px] uppercase tracking-[0.16em]"
+                                                                style={{
+                                                                    borderColor: `${section.accent}44`,
+                                                                    color: section.accent,
+                                                                }}
+                                                            >
+                                                                {entry.tag}
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                    <span className="mt-2.5 block max-w-[62ch] text-[13.5px] leading-relaxed text-[#8d8a83]">
+                                                        {entry.note}
+                                                    </span>
+                                                    <span className="hub-path hub-mono mt-3 block text-[11px] text-[#7a776f] transition-colors duration-200 sm:hidden">
+                                                        {entry.path}
+                                                    </span>
+                                                </span>
+
+                                                <span className="flex items-center gap-4 sm:gap-6 pt-1">
+                                                    <span className="hub-path hub-mono hidden text-[12px] text-[#7a776f] transition-colors duration-200 sm:block">
+                                                        {entry.path}
+                                                    </span>
+                                                    <ArrowUpRight className="hub-arrow h-[18px] w-[18px] shrink-0" />
+                                                </span>
+                                            </a>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </section>
+                    ))}
+                </main>
+
+                <footer
+                    className="hub-rise hub-mono mt-20 border-t border-[#26251f] pt-7 text-[11px] leading-relaxed text-[#7a776f]"
+                    style={{ "--i": step++ } as React.CSSProperties}
                 >
-                  <BarChart3 className="w-3 h-3" /> V2 (CSV)
-                </Link>
-              </div>
-              <div className="flex items-center gap-2">
-                <TabsList>
-                  <TabsTrigger value="shifts" className="flex items-center gap-2">
-                    <Activity className="w-4 h-4" />
-                    Смены и Выработка
-                  </TabsTrigger>
-                  <TabsTrigger value="users" className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Пользователи
-                  </TabsTrigger>
-                </TabsList>
-              </div>
+                    <p>
+                        Локализованных роутов здесь нет. Адреса с префиксом — /ru/v2, /en/support-admin —
+                        редиректят на страницу без префикса, так что 404 не будет.
+                    </p>
+                    <p className="mt-2">
+                        Документация: docs/SUPPORT_CHAT_TREE_GUIDE.md · docs/DEMO_2_GUIDE.md ·
+                        docs/DEMO_3_GUIDE.md · docs/FUNNEL_CHART_GUIDE.md
+                    </p>
+                </footer>
             </div>
-
-            <div className="flex flex-col items-end gap-2 w-[200px]">
-              {activeTab === 'shifts' ? (
-                <>
-                  <Button
-                    variant="default"
-                    onClick={handleSync}
-                    disabled={isSyncing}
-                    className="w-full"
-                  >
-                    {isSyncing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Обновление смен...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Обновить смены
-                      </>
-                    )}
-                  </Button>
-                  {isSyncing && (
-                    <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-primary h-full transition-all duration-500 ease-in-out"
-                        style={{ width: `${syncProgress}%` }}
-                      />
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Button
-                    variant="default"
-                    onClick={handleSyncUsers}
-                    disabled={isSyncingUsers}
-                    className="w-full"
-                  >
-                    {isSyncingUsers ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Обновление юзеров...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Обновить юзеров
-                      </>
-                    )}
-                  </Button>
-                  {isSyncingUsers && (
-                    <div className="w-full bg-secondary h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-primary h-full transition-all duration-500 ease-in-out"
-                        style={{ width: `${syncProgressUsers}%` }}
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-
-            </div>
-          </div>
-
-          <TabsContent value="shifts" className="space-y-6">
-            <div className="flex flex-col space-y-2 mb-4">
-              <p className="text-muted-foreground">
-                Визуализация отчетов по сотрудникам, часам и объектам.
-              </p>
-            </div>
-
-            <FilterBar
-              data={data}
-              filters={filters}
-              onFilterChange={setFilters}
-              metricMode={metricMode}
-              onMetricModeChange={setMetricMode}
-            />
-
-            <KPIGrid stats={stats} metricMode={metricMode} />
-
-            <div className="grid gap-4">
-              <ChartsSection data={filteredData} metricMode={metricMode} />
-            </div>
-
-            <div className="text-xs text-muted-foreground mt-8 text-center">
-              Всего записей: {filteredData.length} (из {data.length})
-            </div>
-          </TabsContent>
-
-          <TabsContent value="users" className="space-y-6">
-            <UsersView data={usersData} loading={usersLoading} />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </div>
-  )
+        </div>
+    );
 }

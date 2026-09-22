@@ -107,7 +107,7 @@ export default function V2Page() {
                         </p>
                     </div>
                     <Link
-                        href="/"
+                        href="/dashboard"
                         className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
                     >
                         Перейти к V1 (API-версия) <ExternalLink className="h-3 w-3" />
