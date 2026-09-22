@@ -3,9 +3,21 @@
  * Детерминированный, без внешних вызовов.
  */
 
+import type { ActionPayload, ActionType, TicketCategory } from "./chatTree";
+import {
+    CHAT_TREE,
+    DEFAULT_SETTINGS,
+    DEMO_TREE_PATH,
+    actionLabel,
+    childrenOf,
+    findNode,
+} from "./chatTree";
+
 export type TicketStatus = "waiting" | "in_progress" | "closed";
-export type TicketCategory = "b2b" | "executor";
-export type MessageAuthor = "user" | "support";
+/** Категория живёт в chatTree (нужна в payload'е ESCALATE), здесь только реэкспорт. */
+export type { TicketCategory };
+/** bot — автоответ из дерева частых вопросов, support — живой оператор. */
+export type MessageAuthor = "user" | "support" | "bot";
 export type AttachmentKind = "file" | "image" | "link";
 
 export interface Attachment {
@@ -13,6 +25,20 @@ export interface Attachment {
     name: string;
     size?: string;
     url?: string;
+}
+
+/** Вариант меню, который бот предлагает нажать. */
+export interface MessageOption {
+    nodeId: string;
+    title: string;
+    icon: string | null;
+}
+
+/** Кнопка действия под автоответом (см. action_type в chatTree). */
+export interface MessageAction {
+    type: ActionType;
+    label: string;
+    payload: ActionPayload;
 }
 
 export interface ChatMessage {
@@ -23,6 +49,16 @@ export interface ChatMessage {
     text: string;
     timestamp: string; // ISO
     attachments?: Attachment[];
+    /** Как рендерить пузырь. По умолчанию "text". */
+    kind?: "text" | "menu" | "answer";
+    /** Узел дерева, породивший сообщение. */
+    nodeId?: string;
+    /** Для kind="menu" — пункты следующего уровня. */
+    options?: MessageOption[];
+    /** Для kind="answer" — кнопки под текстом. */
+    actions?: MessageAction[];
+    /** Какой пункт меню выбрал пользователь (для author="user"). */
+    pickedNodeId?: string;
 }
 
 export interface Ticket {
@@ -44,6 +80,13 @@ export interface Ticket {
     /** История переходов статусов для метрик карточки */
     history: { status: TicketStatus; at: string }[];
     messages: ChatMessage[];
+    /**
+     * Цепочка nodeId от корня дерева до узла, на котором пользователь
+     * эскалировал обращение. Оператор видит её в карточке и не переспрашивает.
+     */
+    treePath?: string[];
+    /** Обращение закрылось автоответом, до оператора не дошло. */
+    resolvedByBot?: boolean;
 }
 
 export const STATUS_LABEL: Record<TicketStatus, string> = {
@@ -323,6 +366,183 @@ export const TICKETS: Ticket[] = [
         ],
     },
 ];
+
+// ═══════════════════════════════════════════════════════════════════════
+// Обращения, пришедшие из дерева частых вопросов
+// ═══════════════════════════════════════════════════════════════════════
+
+export const BOT_AUTHOR_NAME = "Помощник TEOS";
+
+/**
+ * Собирает переписку с ботом по пройденному пути дерева: на каждом шаге
+ * меню бота и выбор пользователя, в конце — автоответ листового узла.
+ * Генерируется из CHAT_TREE, поэтому не расходится с деревом при его правке.
+ */
+function botTranscript(
+    ticketId: number,
+    path: string[],
+    firstMessageId: number,
+    startedAt: string,
+    userName: string,
+): ChatMessage[] {
+    const messages: ChatMessage[] = [];
+    let id = firstMessageId;
+    let cursor = new Date(startedAt).getTime();
+    const tick = (): string => {
+        cursor += 60_000;
+        return new Date(cursor).toISOString();
+    };
+
+    let parentId: string | null = null;
+    for (const nodeId of path) {
+        const parent = findNode(CHAT_TREE, parentId);
+        const picked = findNode(CHAT_TREE, nodeId);
+        if (!picked) break;
+
+        messages.push({
+            id: id++,
+            ticketId,
+            author: "bot",
+            authorName: BOT_AUTHOR_NAME,
+            text: parent ? `Уточните вопрос по теме «${parent.title}»:` : DEFAULT_SETTINGS.greeting,
+            timestamp: tick(),
+            kind: "menu",
+            nodeId: parent?.id,
+            options: childrenOf(CHAT_TREE, parentId).map((n) => ({
+                nodeId: n.id,
+                title: n.title,
+                icon: n.icon,
+            })),
+        });
+
+        messages.push({
+            id: id++,
+            ticketId,
+            author: "user",
+            authorName: userName,
+            text: picked.title,
+            timestamp: tick(),
+            pickedNodeId: picked.id,
+        });
+
+        parentId = nodeId;
+    }
+
+    const leaf = findNode(CHAT_TREE, path[path.length - 1]);
+    if (leaf) {
+        messages.push({
+            id: id++,
+            ticketId,
+            author: "bot",
+            authorName: BOT_AUTHOR_NAME,
+            text: leaf.body ?? "",
+            timestamp: tick(),
+            kind: "answer",
+            nodeId: leaf.id,
+            actions:
+                leaf.actionType === "NONE" || !leaf.actionPayload
+                    ? undefined
+                    : [
+                          {
+                              type: leaf.actionType,
+                              label: actionLabel(leaf.actionPayload, DEFAULT_SETTINGS),
+                              payload: leaf.actionPayload,
+                          },
+                      ],
+        });
+    }
+
+    return messages;
+}
+
+/** Обращение, которое бот не закрыл — пользователь позвал оператора. */
+const ESCALATED_TICKET: Ticket = (() => {
+    const startedAt = iso(0, 2, 30);
+    const transcript = botTranscript(7, DEMO_TREE_PATH, 16, startedAt, "Жаркын Сапаров");
+    const lastBotAt = transcript[transcript.length - 1].timestamp;
+    const escalatedAt = new Date(new Date(lastBotAt).getTime() + 60_000).toISOString();
+    const supportAt = new Date(new Date(lastBotAt).getTime() + 7 * 60_000).toISOString();
+
+    return {
+        id: 7,
+        number: "T-2845",
+        title: "Не пришли деньги за смену",
+        category: "executor",
+        status: "in_progress",
+        userName: "Жаркын Сапаров",
+        userPhone: "+7 (705) 310-22-18",
+        createdAt: startedAt,
+        statusChangedAt: supportAt,
+        lastMessage: "Проверяю табель по этой смене, вернусь с ответом в течение часа.",
+        unreadForAdmin: 0,
+        treePath: DEMO_TREE_PATH,
+        history: [
+            { status: "waiting", at: escalatedAt },
+            { status: "in_progress", at: supportAt },
+        ],
+        messages: [
+            ...transcript,
+            {
+                id: 24,
+                ticketId: 7,
+                author: "user",
+                authorName: "Жаркын Сапаров",
+                text: DEFAULT_SETTINGS.btnEscalate,
+                timestamp: escalatedAt,
+            },
+            {
+                id: 25,
+                ticketId: 7,
+                author: "support",
+                authorName: "Айгуль (техподдержка)",
+                text: "Здравствуйте! Вижу ваш вопрос по смене от 19.09. Проверяю табель по этой смене, вернусь с ответом в течение часа.",
+                timestamp: supportAt,
+            },
+        ],
+    };
+})();
+
+/** Обращение, которое бот закрыл сам — до оператора не дошло. */
+const BOT_RESOLVED_TICKET: Ticket = (() => {
+    const startedAt = iso(1, 3);
+    const path = DEMO_TREE_PATH.slice(0, 2).concat(
+        childrenOf(CHAT_TREE, DEMO_TREE_PATH[1])[0]?.id ?? [],
+    );
+    const transcript = botTranscript(8, path, 30, startedAt, "Айдана Нурланова");
+    const lastAt = transcript[transcript.length - 1].timestamp;
+    const closedAt = new Date(new Date(lastAt).getTime() + 90_000).toISOString();
+
+    return {
+        id: 8,
+        number: "T-2838",
+        title: "Не пришли деньги за смену",
+        category: "executor",
+        status: "closed",
+        userName: "Айдана Нурланова",
+        userPhone: "+7 (778) 402-55-73",
+        createdAt: startedAt,
+        statusChangedAt: closedAt,
+        closedAt,
+        lastMessage: "Спасибо, помогло",
+        unreadForAdmin: 0,
+        treePath: path,
+        resolvedByBot: true,
+        history: [{ status: "closed", at: closedAt }],
+        messages: [
+            ...transcript,
+            {
+                id: 38,
+                ticketId: 8,
+                author: "user",
+                authorName: "Айдана Нурланова",
+                text: DEFAULT_SETTINGS.btnHelped,
+                timestamp: closedAt,
+            },
+        ],
+    };
+})();
+
+TICKETS.push(ESCALATED_TICKET, BOT_RESOLVED_TICKET);
 
 // ═══════════════════════════════════════════════════════════════════════
 // Time helpers

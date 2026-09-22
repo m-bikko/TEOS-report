@@ -18,8 +18,11 @@ import {
     Ticket as TicketIcon,
     TrendingUp,
     Filter,
+    Bot,
+    ListTree,
 } from "lucide-react";
 import { Sidebar } from "../_support-shared/Sidebar";
+import { CHAT_TREE, pathTo } from "../_support-shared/chatTree";
 import {
     TICKETS,
     STATUS_LABEL,
@@ -48,6 +51,12 @@ export default function SupportAdminPage() {
     const closed = TICKETS.filter((t) => t.status === "closed");
 
     const activeChat = TICKETS.find((t) => t.status === "in_progress")!;
+    /** Обращение, которое пришло из дерева частых вопросов и дошло до оператора. */
+    const escalatedChat = TICKETS.find((t) => t.treePath && !t.resolvedByBot)!;
+    const botResolved = TICKETS.filter((t) => t.resolvedByBot);
+    const fromTree = TICKETS.filter((t) => t.treePath);
+    const deflectionRate =
+        fromTree.length > 0 ? Math.round((botResolved.length / fromTree.length) * 100) : 0;
 
     return (
         <div className="min-h-screen bg-neutral-50 flex">
@@ -81,11 +90,11 @@ export default function SupportAdminPage() {
                             icon={<TrendingUp className="h-3.5 w-3.5" />}
                         />
                         <MetricCard
-                            label="Закрыто (за всё время)"
-                            value={String(closed.length)}
-                            hint="Архив"
+                            label="Решено автоответом"
+                            value={`${deflectionRate}%`}
+                            hint={`${botResolved.length} из ${fromTree.length} обращений из дерева`}
                             accent="#6B007B"
-                            icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                            icon={<Bot className="h-3.5 w-3.5" />}
                         />
                     </div>
 
@@ -133,6 +142,14 @@ export default function SupportAdminPage() {
                         <AdminChatModal ticket={activeChat} />
                     </section>
 
+                    {/* Обращение, пришедшее из дерева частых вопросов */}
+                    <section className="space-y-2">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                            Модал чата — обращение из дерева частых вопросов
+                        </div>
+                        <AdminChatModal ticket={escalatedChat} />
+                    </section>
+
                     {/* Ещё пример — waiting → показать первое сообщение и кнопку "Взять в работу" */}
                     <section className="space-y-2">
                         <div className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
@@ -167,6 +184,12 @@ function Header() {
                         className="hover:text-foreground flex items-center gap-1"
                     >
                         /support-user <ExternalLink className="h-3 w-3" />
+                    </Link>
+                    <Link
+                        href="/support-chat-builder"
+                        className="text-primary hover:underline flex items-center gap-1"
+                    >
+                        /support-chat-builder <ExternalLink className="h-3 w-3" />
                     </Link>
                 </div>
             </div>
@@ -316,6 +339,19 @@ function KanbanCard({ ticket }: { ticket: Ticket }) {
                         />
                         {CATEGORY_LABEL[ticket.category]}
                     </span>
+                    {ticket.treePath && (
+                        <span
+                            className="text-[9px] px-1.5 py-0.5 rounded-full font-medium inline-flex items-center gap-1 bg-muted text-muted-foreground"
+                            title={
+                                ticket.resolvedByBot
+                                    ? "Закрыто автоответом, оператор не подключался"
+                                    : "Пришло из дерева частых вопросов"
+                            }
+                        >
+                            <Bot className="h-2.5 w-2.5" />
+                            {ticket.resolvedByBot ? "Автоответ" : "Из дерева"}
+                        </span>
+                    )}
                 </div>
                 {ticket.unreadForAdmin > 0 && (
                     <span className="text-[9px] rounded-full bg-red-500 text-white h-4 w-4 flex items-center justify-center font-semibold">
@@ -458,6 +494,42 @@ function AdminChatModal({ ticket }: { ticket: Ticket }) {
                     <div className="text-[11px] text-muted-foreground">{ticket.userPhone}</div>
                 </div>
 
+                {ticket.treePath && ticket.treePath.length > 0 && (
+                    <div className="border-t border-border pt-3">
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-2 flex items-center gap-1">
+                            <ListTree className="h-3 w-3" />
+                            Путь по дереву
+                        </div>
+                        <div className="rounded-md bg-white border border-border p-2.5 space-y-1">
+                            {pathTo(CHAT_TREE, ticket.treePath[ticket.treePath.length - 1]).map(
+                                (node, i) => (
+                                    <div
+                                        key={node.id}
+                                        className="text-[11px] leading-snug flex items-start gap-1.5"
+                                        style={{ paddingLeft: i * 8 }}
+                                    >
+                                        <span className="text-muted-foreground/50 shrink-0">
+                                            {i === 0 ? "" : "└"}
+                                        </span>
+                                        <span
+                                            className={
+                                                i === ticket.treePath!.length - 1
+                                                    ? "font-medium"
+                                                    : "text-muted-foreground"
+                                            }
+                                        >
+                                            {node.title}
+                                        </span>
+                                    </div>
+                                ),
+                            )}
+                            <div className="pt-1.5 mt-1 border-t border-border text-[10px] text-muted-foreground leading-snug">
+                                Автоответ уже показан пользователю — не повторяйте его в ответе.
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="border-t border-border pt-3">
                     <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-2">
                         Секундомер
@@ -551,18 +623,47 @@ function AdminChatModal({ ticket }: { ticket: Ticket }) {
 
 function WebMessage({ message }: { message: ChatMessage }) {
     const isUser = message.author === "user";
+    const isBot = message.author === "bot";
     return (
         <div className={`flex ${isUser ? "justify-start" : "justify-end"}`}>
             <div className={`max-w-[75%] flex flex-col ${isUser ? "items-start" : "items-end"} gap-1`}>
-                <div className="text-[10px] text-muted-foreground px-2">{message.authorName}</div>
+                <div className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
+                    {isBot && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-px text-[9px] font-semibold text-muted-foreground">
+                            <Bot className="h-2.5 w-2.5" />
+                            Автоответ
+                        </span>
+                    )}
+                    {message.authorName}
+                </div>
                 <div
                     className={`rounded-lg px-3 py-2 ${
                         isUser
                             ? "bg-white border border-border"
-                            : "bg-primary text-primary-foreground"
+                            : isBot
+                              ? "bg-muted/70 border border-border text-foreground"
+                              : "bg-primary text-primary-foreground"
                     }`}
                 >
                     <div className="text-xs leading-relaxed">{message.text}</div>
+
+                    {message.kind === "menu" && message.options && (
+                        <div className="mt-1.5 space-y-0.5">
+                            {message.options.map((o) => (
+                                <div
+                                    key={o.nodeId}
+                                    className="text-[10px] text-muted-foreground flex items-center gap-1"
+                                >
+                                    <span className="text-muted-foreground/50">•</span>
+                                    {o.title}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {message.pickedNodeId && (
+                        <div className="mt-1 text-[9px] text-muted-foreground">выбранный пункт меню</div>
+                    )}
                     {message.attachments?.map((a, i) => (
                         <div
                             key={i}
@@ -590,7 +691,7 @@ function WebMessage({ message }: { message: ChatMessage }) {
                 </div>
                 <div className="flex items-center gap-1 px-2 text-[10px] text-muted-foreground">
                     <span>{formatShortTime(message.timestamp)}</span>
-                    {!isUser && <CheckCheck className="h-3 w-3 text-blue-500" />}
+                    {!isUser && !isBot && <CheckCheck className="h-3 w-3 text-blue-500" />}
                 </div>
             </div>
         </div>

@@ -33,12 +33,13 @@ interface MenuItem {
 }
 
 interface Props {
-    activeKey?: "user-support" | "admin-support";
+    activeKey?: "user-support" | "admin-support" | "chat-builder";
 }
 
 export function Sidebar({ activeKey }: Props) {
     const isUserView = activeKey === "user-support";
     const isAdminView = activeKey === "admin-support";
+    const isBuilderView = activeKey === "chat-builder";
 
     const items: MenuItem[] = [
         { icon: <ClipboardList className="h-4 w-4" />, label: "Заявки" },
@@ -55,20 +56,28 @@ export function Sidebar({ activeKey }: Props) {
         {
             icon: <LifeBuoy className="h-4 w-4" />,
             label: "Техподдержка",
-            active: isAdminView || isUserView,
+            active: isAdminView || isUserView || isBuilderView,
             badge: isAdminView ? 3 : undefined,
             children: isAdminView
                 ? [
                     { label: "Канбан", active: true },
                     { label: "Архив" },
                     { label: "Метрики" },
+                    { label: "Конструктор чата" },
                 ]
-                : isUserView
+                : isBuilderView
                     ? [
-                        { label: "Мои обращения", active: true },
-                        { label: "Создать" },
+                        { label: "Канбан" },
+                        { label: "Архив" },
+                        { label: "Метрики" },
+                        { label: "Конструктор чата", active: true },
                     ]
-                    : undefined,
+                    : isUserView
+                        ? [
+                            { label: "Мои обращения", active: true },
+                            { label: "Создать" },
+                        ]
+                        : undefined,
         },
         { icon: <Bell className="h-4 w-4" />, label: "Новости" },
         { icon: <Wallet className="h-4 w-4" />, label: "Казначейство" },
