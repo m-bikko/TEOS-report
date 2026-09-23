@@ -3,12 +3,14 @@
 /**
  * Демо: конструктор дерева частых вопросов чата техподдержки (web-ERP).
  *
- * Покрывает задачи бэкенда BE-01…BE-06:
- *   BE-01 — модель узлов, версий и настроек;
+ * Оформление — по брендбуку TEOS и скриншотам реального ERP: Open Sans,
+ * синий #3563e9, серые подложки полей, системные цвета только на состояниях.
+ *
+ * Покрывает задачи бэкенда:
+ *   BE-01 — модель узлов и настроек, двуязычный контент;
  *   BE-03 — CRUD черновика с валидацией (циклы, ANSWER без потомков);
  *   BE-04 — перенос узлов одним патчем parent_id/sort_order;
- *   BE-05 — настройки чата;
- *   BE-06 — импорт/экспорт в формате контракта.
+ *   BE-05 — настройки чата.
  *
  * Состояние живёт в памяти вкладки: это демо-стенд, ничего не персистится.
  */
@@ -22,11 +24,11 @@ import {
     AlertCircle,
     ExternalLink,
     Smartphone,
+    ListTree,
 } from "lucide-react";
 import { Sidebar } from "../_support-shared/Sidebar";
 import {
     CHAT_TREE,
-    CHAT_VERSIONS,
     DEFAULT_SETTINGS,
     applyPatches,
     childrenOf,
@@ -39,22 +41,18 @@ import {
     type ReorderPatch,
     type SupportChatNode,
     type SupportChatSettings,
-    type SupportChatVersion,
 } from "../_support-shared/chatTree";
+import { Button, PillTabs } from "../_support-shared/brand";
 import { TreePanel } from "./TreePanel";
 import { NodeEditor } from "./NodeEditor";
 import { PhonePreview } from "./PhonePreview";
 import { SettingsTab } from "./SettingsTab";
-import { VersionsTab } from "./VersionsTab";
-import { ImportExportTab } from "./ImportExportTab";
 
-type TabKey = "tree" | "settings" | "versions" | "io";
+type TabKey = "tree" | "settings";
 
 const TABS: { key: TabKey; label: string }[] = [
     { key: "tree", label: "Дерево" },
     { key: "settings", label: "Настройки" },
-    { key: "versions", label: "Версии" },
-    { key: "io", label: "Импорт-экспорт" },
 ];
 
 const EDITOR_NAME = "Айгуль Сериккызы";
@@ -71,8 +69,10 @@ function diffCount(draft: SupportChatNode[], published: SupportChatNode[]): numb
             continue;
         }
         const same =
-            before.title === node.title &&
-            before.body === node.body &&
+            before.titleRu === node.titleRu &&
+            before.titleKz === node.titleKz &&
+            before.bodyRu === node.bodyRu &&
+            before.bodyKz === node.bodyKz &&
             before.icon === node.icon &&
             before.isActive === node.isActive &&
             before.nodeType === node.nodeType &&
@@ -94,7 +94,9 @@ function diffCount(draft: SupportChatNode[], published: SupportChatNode[]): numb
 export default function SupportChatBuilderPage() {
     const [nodes, setNodes] = useState<SupportChatNode[]>(CHAT_TREE);
     const [settings, setSettings] = useState<SupportChatSettings>(DEFAULT_SETTINGS);
-    const [versions, setVersions] = useState<SupportChatVersion[]>(CHAT_VERSIONS);
+    /** Снимок последней опубликованной версии — от него считается черновик. */
+    const [published, setPublished] = useState<SupportChatNode[]>(CHAT_TREE);
+    const [version, setVersion] = useState(3);
     const [selectedId, setSelectedId] = useState<string | null>(CHAT_TREE[0]?.id ?? null);
     const [expanded, setExpanded] = useState<Set<string>>(
         () => new Set(CHAT_TREE.filter((n) => n.parentId === null).map((n) => n.id)),
@@ -104,13 +106,7 @@ export default function SupportChatBuilderPage() {
 
     const issues = useMemo(() => validateTree(nodes), [nodes]);
     const errorCount = countErrors(issues);
-
-    const published = versions.find((v) => v.status === "PUBLISHED");
-    const pendingChanges = useMemo(
-        () => diffCount(nodes, published?.snapshot ?? []),
-        [nodes, published],
-    );
-
+    const pendingChanges = useMemo(() => diffCount(nodes, published), [nodes, published]);
     const selected = findNode(nodes, selectedId);
 
     // ── Операции над черновиком ──────────────────────────────────────────
@@ -129,15 +125,13 @@ export default function SupportChatBuilderPage() {
         const siblings = childrenOf(nodes, parentId, true);
         const node = makeNode(parentId, siblings.length, EDITOR_NAME);
 
-        setNodes((prev) =>
+        setNodes((prev) => [
             // Родитель, ставший контейнером, обязан быть меню.
-            [
-                ...(parentId
-                    ? prev.map((n) => (n.id === parentId ? { ...n, nodeType: "MENU" as const } : n))
-                    : prev),
-                node,
-            ],
-        );
+            ...(parentId
+                ? prev.map((n) => (n.id === parentId ? { ...n, nodeType: "MENU" as const } : n))
+                : prev),
+            node,
+        ]);
         setSelectedId(node.id);
         if (parentId) setExpanded((prev) => new Set(prev).add(parentId));
     };
@@ -158,7 +152,7 @@ export default function SupportChatBuilderPage() {
             ...n,
             id: idMap.get(n.id) as string,
             parentId: n.id === id ? n.parentId : (idMap.get(n.parentId ?? "") ?? n.parentId),
-            title: n.id === id ? `${n.title} (копия)` : n.title,
+            titleRu: n.id === id ? `${n.titleRu} (копия)` : n.titleRu,
             sortOrder: n.id === id ? siblings.length : n.sortOrder,
             updatedBy: EDITOR_NAME,
             updatedAt: stamp,
@@ -217,73 +211,59 @@ export default function SupportChatBuilderPage() {
 
     const publish = (): void => {
         if (errorCount > 0 || pendingChanges === 0) return;
-        const nextVersion = Math.max(...versions.map((v) => v.version)) + 1;
-        setVersions((prev) => [
-            {
-                id: nextVersion,
-                version: nextVersion,
-                status: "PUBLISHED",
-                publishedAt: new Date().toISOString(),
-                publishedBy: EDITOR_NAME,
-                nodeCount: nodes.length,
-                snapshot: nodes,
-            },
-            ...prev.map((v) => ({ ...v, status: "ARCHIVED" as const })),
-        ]);
-    };
-
-    const restoreVersion = (version: SupportChatVersion): void => {
-        setNodes(version.snapshot);
-        setSelectedId(version.snapshot[0]?.id ?? null);
-        setTab("tree");
+        setPublished(nodes);
+        setVersion((v) => v + 1);
     };
 
     // ── Разметка ─────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen bg-background flex">
+        <div className="flex min-h-screen bg-[#f6f7f9] font-sans text-[#222222]">
             <Sidebar activeKey="chat-builder" />
 
-            <div className="flex-1 min-w-0 flex flex-col h-screen">
-                <header className="border-b border-border bg-card px-5 py-2.5 flex items-center gap-4 shrink-0">
+            <div className="flex h-screen min-w-0 flex-1 flex-col">
+                <header className="flex shrink-0 items-center gap-4 border-b border-[#e6e8ec] bg-white px-6 py-3">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] bg-[#e8eefc] text-[#3563e9]">
+                        <ListTree className="h-5 w-5" />
+                    </span>
+
                     <div className="min-w-0">
-                        <div className="text-[10px] text-muted-foreground">
-                            Техподдержка › Конструктор чата
-                        </div>
-                        <h1 className="text-sm font-semibold truncate">Дерево частых вопросов</h1>
+                        <div className="text-[11px] text-[#8a9099]">Техподдержка › Конструктор чата</div>
+                        <h1 className="truncate text-[17px] font-bold">Дерево частых вопросов</h1>
                     </div>
 
-                    <div className="flex items-center gap-2 ml-auto shrink-0">
+                    <div className="ml-auto flex shrink-0 items-center gap-3">
                         <Link
                             href="/support-mobile"
-                            className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#3563e9] hover:underline"
                         >
-                            <Smartphone className="h-3 w-3" />
+                            <Smartphone className="h-3.5 w-3.5" />
                             Как видит пользователь
-                            <ExternalLink className="h-2.5 w-2.5" />
+                            <ExternalLink className="h-3 w-3" />
                         </Link>
 
                         <span
-                            className={`text-[10px] px-2 py-1 rounded-full font-medium ${
+                            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                                 pendingChanges > 0
-                                    ? "bg-amber-100 text-amber-700"
-                                    : "bg-muted text-muted-foreground"
+                                    ? "bg-[#fff0db] text-[#b56c00]"
+                                    : "bg-[#dbf1e8] text-[#07733a]"
                             }`}
                         >
                             {pendingChanges > 0
                                 ? `Черновик · ${pendingChanges} изм.`
-                                : `Совпадает с v${published?.version ?? "—"}`}
+                                : `Опубликовано · v${version}`}
                         </span>
 
                         {errorCount > 0 && (
-                            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded-full font-medium bg-red-100 text-red-700">
-                                <AlertCircle className="h-3 w-3" />
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#fce0e0] px-2.5 py-1 text-[11px] font-semibold text-[#ec2d30]">
+                                <AlertCircle className="h-3.5 w-3.5" />
                                 {errorCount} ошибок
                             </span>
                         )}
 
-                        <button
-                            type="button"
+                        <Button
                             onClick={publish}
                             disabled={errorCount > 0 || pendingChanges === 0}
                             title={
@@ -293,34 +273,20 @@ export default function SupportChatBuilderPage() {
                                       ? "Черновик не отличается от опубликованной версии"
                                       : "Опубликовать новую версию"
                             }
-                            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                            <Upload className="h-3.5 w-3.5" />
+                            <Upload className="h-4 w-4" />
                             Опубликовать
-                        </button>
+                        </Button>
                     </div>
                 </header>
 
-                <nav className="border-b border-border bg-card px-5 flex gap-1 shrink-0">
-                    {TABS.map((t) => (
-                        <button
-                            key={t.key}
-                            type="button"
-                            onClick={() => setTab(t.key)}
-                            className={`px-3 py-2 text-xs border-b-2 transition-colors ${
-                                tab === t.key
-                                    ? "border-primary text-primary font-medium"
-                                    : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
-                        >
-                            {t.label}
-                        </button>
-                    ))}
+                <nav className="shrink-0 border-b border-[#e6e8ec] bg-white px-6 py-2">
+                    <PillTabs tabs={TABS} active={tab} onChange={setTab} />
                 </nav>
 
-                {tab === "tree" && (
-                    <div className="flex-1 min-h-0 flex">
-                        <div className="w-[320px] shrink-0">
+                {tab === "tree" ? (
+                    <div className="flex min-h-0 flex-1">
+                        <div className="w-[296px] shrink-0">
                             <TreePanel
                                 nodes={nodes}
                                 selectedId={selectedId}
@@ -330,22 +296,20 @@ export default function SupportChatBuilderPage() {
                                 onToggleExpand={toggleExpand}
                                 onMove={moveNode}
                                 onAddChild={addChild}
-                                onDuplicate={duplicateNode}
-                                onDelete={deleteNode}
                                 onToggleActive={toggleActive}
                                 onNudge={nudge}
                             />
                         </div>
 
-                        <div className="flex-1 min-w-0 flex flex-col">
+                        <div className="flex min-w-0 flex-1 flex-col">
                             {lastPatch.length > 0 && (
-                                <div className="border-b border-border bg-blue-50/60 px-5 py-2 flex items-start gap-2">
-                                    <ArrowRightLeft className="h-3.5 w-3.5 text-blue-600 shrink-0 mt-px" />
+                                <div className="flex items-start gap-2 border-b border-[#e6e8ec] bg-[#e2eafb] px-6 py-2.5">
+                                    <ArrowRightLeft className="mt-px h-4 w-4 shrink-0 text-[#2d7bef]" />
                                     <div className="min-w-0 flex-1">
-                                        <div className="text-[10px] font-medium text-blue-800">
+                                        <div className="text-[11.5px] font-semibold text-[#1d4fa8]">
                                             Перенос ушёл бы одним запросом — PATCH /admin/support-chat/reorder
                                         </div>
-                                        <div className="text-[10px] font-mono text-blue-700/80 truncate">
+                                        <div className="truncate font-mono text-[11px] text-[#2d7bef]">
                                             {JSON.stringify(lastPatch)}
                                         </div>
                                     </div>
@@ -353,9 +317,9 @@ export default function SupportChatBuilderPage() {
                                         type="button"
                                         onClick={() => setLastPatch([])}
                                         aria-label="Скрыть"
-                                        className="shrink-0 text-blue-600"
+                                        className="shrink-0 text-[#2d7bef]"
                                     >
-                                        <X className="h-3 w-3" />
+                                        <X className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
                             )}
@@ -364,31 +328,17 @@ export default function SupportChatBuilderPage() {
                                 nodes={nodes}
                                 settings={settings}
                                 onChange={(patch) => selectedId && updateNode(selectedId, patch)}
+                                onDuplicate={duplicateNode}
+                                onDelete={deleteNode}
                             />
                         </div>
 
                         <PhonePreview node={selected} nodes={nodes} settings={settings} />
                     </div>
-                )}
-
-                {tab === "settings" && (
+                ) : (
                     <SettingsTab
                         settings={settings}
                         onChange={(patch) => setSettings((prev) => ({ ...prev, ...patch }))}
-                    />
-                )}
-
-                {tab === "versions" && <VersionsTab versions={versions} onRestore={restoreVersion} />}
-
-                {tab === "io" && (
-                    <ImportExportTab
-                        nodes={nodes}
-                        settings={settings}
-                        onImport={(imported, importedSettings) => {
-                            setNodes(imported);
-                            setSettings(importedSettings);
-                            setSelectedId(imported[0]?.id ?? null);
-                        }}
                     />
                 )}
             </div>

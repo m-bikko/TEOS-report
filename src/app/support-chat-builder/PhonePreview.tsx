@@ -37,7 +37,7 @@ export function PhonePreview({
             ticketId: 0,
             author: "user",
             authorName: "Пользователь",
-            text: node.title || "Без заголовка",
+            text: node.titleRu || "Без заголовка",
             timestamp: TREE_NOW,
         });
 
@@ -47,13 +47,13 @@ export function PhonePreview({
                 ticketId: 0,
                 author: "bot",
                 authorName: BOT_AUTHOR_NAME,
-                text: `Уточните вопрос по теме «${node.title || "Без заголовка"}»:`,
+                text: `Уточните вопрос по теме «${node.titleRu || "Без заголовка"}»:`,
                 timestamp: TREE_NOW,
                 kind: "menu",
                 nodeId: node.id,
                 options: childrenOf(nodes, node.id).map((n) => ({
                     nodeId: n.id,
-                    title: n.title,
+                    title: n.titleRu,
                     icon: n.icon,
                 })),
             });
@@ -63,7 +63,7 @@ export function PhonePreview({
                 ticketId: 0,
                 author: "bot",
                 authorName: BOT_AUTHOR_NAME,
-                text: node.body ?? "",
+                text: node.bodyRu ?? "",
                 timestamp: TREE_NOW,
                 kind: "answer",
                 nodeId: node.id,
@@ -113,7 +113,7 @@ export function PhonePreview({
                                         <span key={c.id} className="flex items-center gap-1">
                                             {i > 0 && <ChevronRight className="h-2.5 w-2.5 text-neutral-300" />}
                                             <span className="text-[9px] text-neutral-500">
-                                                {c.title || "Без заголовка"}
+                                                {c.titleRu || "Без заголовка"}
                                             </span>
                                         </span>
                                     ))}

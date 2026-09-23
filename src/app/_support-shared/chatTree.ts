@@ -1,13 +1,13 @@
 /**
  * Дерево частых вопросов чата техподдержки.
  *
- * Зеркало контракта бэкенда (BE-01…BE-06): узлы хранятся ПЛОСКИМ массивом,
+ * Зеркало контракта бэкенда (BE-01…BE-05): узлы хранятся ПЛОСКИМ массивом,
  * как строки таблицы `support_chat_node`, а вложенность строится на лету
  * через childrenOf(). Так демо показывает ровно то, что лежит в БД, и делает
  * очевидным смысл BE-04 (массовое обновление parent_id/sort_order).
  *
- * Демо только на русском: полей title_kz/body_kz из контракта здесь нет,
- * переключатель языков в проекте живёт в другом месте.
+ * Контент двуязычный: title_ru/title_kz и body_ru/body_kz, как в BE-01.
+ * Казахские строки — черновой перевод, до прода нужна вычитка носителем.
  *
  * Этот файл НЕ импортирует ничего из mockData.ts — зависимость односторонняя
  * (mockData → chatTree), иначе получается цикл через TicketCategory.
@@ -19,6 +19,16 @@
 
 /** Категория обращения. Живёт здесь, потому что нужна в payload'е ESCALATE. */
 export type TicketCategory = "b2b" | "executor";
+
+/** Языки контента дерева. Интерфейс ERP остаётся русским. */
+export type Lang = "ru" | "kz";
+
+export const LANGS: Lang[] = ["ru", "kz"];
+
+export const LANG_LABEL: Record<Lang, string> = {
+    ru: "RU",
+    kz: "KZ",
+};
 
 /** MENU — раскрывает следующий уровень, ANSWER — лист с готовым ответом. */
 export type NodeType = "MENU" | "ANSWER";
@@ -33,8 +43,8 @@ export type ActionType =
 export type ActionPayload =
     | { kind: "NONE" }
     | { kind: "ESCALATE"; category: TicketCategory }
-    | { kind: "OPEN_LINK"; url: string; label: string }
-    | { kind: "OPEN_SCREEN"; screen: string; label: string }
+    | { kind: "OPEN_LINK"; url: string; labelRu: string; labelKz: string }
+    | { kind: "OPEN_SCREEN"; screen: string; labelRu: string; labelKz: string }
     /** phone: null → берётся contactPhone из настроек */
     | { kind: "CALL_CENTER"; phone: string | null };
 
@@ -45,10 +55,11 @@ export interface SupportChatNode {
     nodeType: NodeType;
     sortOrder: number;
     isActive: boolean;
-    /** title_ru */
-    title: string;
-    /** body_ru, заполнен только у ANSWER */
-    body: string | null;
+    titleRu: string;
+    titleKz: string;
+    /** Заполнен только у ANSWER. */
+    bodyRu: string | null;
+    bodyKz: string | null;
     /** имя иконки lucide-react */
     icon: string | null;
     actionType: ActionType;
@@ -59,24 +70,18 @@ export interface SupportChatNode {
 
 /** support_chat_settings (BE-05). */
 export interface SupportChatSettings {
-    greeting: string;
-    fallbackText: string;
+    greetingRu: string;
+    greetingKz: string;
+    fallbackTextRu: string;
+    fallbackTextKz: string;
     contactPhone: string;
     contactEmail: string;
-    btnHelped: string;
-    btnEscalate: string;
-    btnBack: string;
-}
-
-/** support_chat_version (BE-01). */
-export interface SupportChatVersion {
-    id: number;
-    version: number;
-    status: "PUBLISHED" | "ARCHIVED";
-    publishedAt: string;
-    publishedBy: string;
-    nodeCount: number;
-    snapshot: SupportChatNode[];
+    btnHelpedRu: string;
+    btnHelpedKz: string;
+    btnEscalateRu: string;
+    btnEscalateKz: string;
+    btnBackRu: string;
+    btnBackKz: string;
 }
 
 export const ACTION_LABEL: Record<ActionType, string> = {
@@ -111,16 +116,40 @@ export const APP_SCREENS: { value: string; label: string }[] = [
 ];
 
 /** Псевдо-«сейчас», чтобы рендер был стабильным. В проде — new Date(). */
-export const TREE_NOW = "2026-09-22T10:00:00Z";
+export const TREE_NOW = "2026-09-23T10:00:00Z";
+
+// ═══════════════════════════════════════════════════════════════════════
+// Чтение контента с учётом языка
+// ═══════════════════════════════════════════════════════════════════════
+
+/** Заголовок узла. Пустой перевод падает на русский — так же ведёт себя приложение. */
+export function nodeTitle(node: SupportChatNode, lang: Lang = "ru"): string {
+    if (lang === "kz") return node.titleKz.trim() || node.titleRu;
+    return node.titleRu;
+}
+
+export function nodeBody(node: SupportChatNode, lang: Lang = "ru"): string {
+    if (lang === "kz") return (node.bodyKz ?? "").trim() || (node.bodyRu ?? "");
+    return node.bodyRu ?? "";
+}
+
+/** Есть ли у узла полный казахский перевод. */
+export function isTranslated(node: SupportChatNode): boolean {
+    if (node.titleKz.trim() === "") return false;
+    if (node.nodeType === "ANSWER" && (node.bodyKz ?? "").trim() === "") return false;
+    return true;
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // Сборка мок-дерева
 // ═══════════════════════════════════════════════════════════════════════
 
 interface RawNode {
-    title: string;
+    ru: string;
+    kz?: string;
     icon?: string;
-    body?: string;
+    bodyRu?: string;
+    bodyKz?: string;
     inactive?: boolean;
     action?: ActionPayload;
     children?: RawNode[];
@@ -152,8 +181,10 @@ function buildTree(raw: RawNode[]): SupportChatNode[] {
                 nodeType: hasChildren ? "MENU" : "ANSWER",
                 sortOrder: index,
                 isActive: !item.inactive,
-                title: item.title,
-                body: hasChildren ? null : (item.body ?? ""),
+                titleRu: item.ru,
+                titleKz: item.kz ?? "",
+                bodyRu: hasChildren ? null : (item.bodyRu ?? ""),
+                bodyKz: hasChildren ? null : (item.bodyKz ?? ""),
                 icon: item.icon ?? null,
                 actionType: actionTypeOf(item.action),
                 actionPayload: item.action ?? { kind: "NONE" },
@@ -170,143 +201,236 @@ function buildTree(raw: RawNode[]): SupportChatNode[] {
 
 const RAW_TREE: RawNode[] = [
     {
-        title: "Смены",
+        ru: "Смены",
+        kz: "Ауысымдар",
         icon: "CalendarClock",
         children: [
             {
-                title: "Не могу записаться на смену",
+                ru: "Не могу записаться на смену",
+                kz: "Ауысымға жазыла алмаймын",
                 children: [
                     {
-                        title: "Кнопка «Записаться» неактивна",
-                        body: "Кнопка блокируется, если в профиле не хватает документов. Откройте раздел «Документы» и проверьте, что загружены удостоверение личности и санитарная книжка с действующим сроком.",
-                        action: { kind: "OPEN_SCREEN", screen: "profile.documents", label: "Открыть мои документы" },
+                        ru: "Кнопка «Записаться» неактивна",
+                        kz: "«Жазылу» түймесі белсенді емес",
+                        bodyRu: "Кнопка блокируется, если в профиле не хватает документов. Откройте раздел «Документы» и проверьте, что загружены удостоверение личности и санитарная книжка с действующим сроком.",
+                        bodyKz: "Профильде құжаттар жетіспесе, түйме бұғатталады. «Құжаттар» бөлімін ашып, жеке куәлік пен мерзімі өтпеген санитарлық кітапша жүктелгенін тексеріңіз.",
+                        action: {
+                            kind: "OPEN_SCREEN",
+                            screen: "profile.documents",
+                            labelRu: "Открыть мои документы",
+                            labelKz: "Құжаттарымды ашу",
+                        },
                     },
                     {
-                        title: "Запись отклонена",
+                        ru: "Запись отклонена",
+                        kz: "Жазылу қабылданбады",
                         children: [
                             {
-                                title: "Просрочена санитарная книжка",
-                                body: "Партнёр отклоняет запись автоматически, если срок санкнижки истёк. Обновите её в профиле и запишитесь на смену заново — повторная запись доступна сразу после загрузки.",
-                                action: { kind: "OPEN_LINK", url: "#", label: "Инструкция по обновлению санкнижки" },
+                                ru: "Просрочена санитарная книжка",
+                                kz: "Санитарлық кітапшаның мерзімі өткен",
+                                bodyRu: "Партнёр отклоняет запись автоматически, если срок санкнижки истёк. Обновите её в профиле и запишитесь на смену заново — повторная запись доступна сразу после загрузки.",
+                                bodyKz: "Санитарлық кітапшаның мерзімі өтсе, серіктес жазылуды автоматты түрде қабылдамайды. Оны профильде жаңартып, ауысымға қайта жазылыңыз — жүктеген соң бірден қолжетімді.",
+                                action: {
+                                    kind: "OPEN_LINK",
+                                    url: "#",
+                                    labelRu: "Инструкция по обновлению санкнижки",
+                                    labelKz: "Санитарлық кітапшаны жаңарту нұсқаулығы",
+                                },
                             },
                             {
-                                title: "Не указан ИИН",
-                                body: "Без ИИН невозможно оформить акт выполненных работ, поэтому запись отклоняется. Заполните ИИН в профиле — проверка занимает до 10 минут.",
-                                action: { kind: "OPEN_SCREEN", screen: "profile.main", label: "Заполнить ИИН" },
+                                ru: "Не указан ИИН",
+                                kz: "ЖСН көрсетілмеген",
+                                bodyRu: "Без ИИН невозможно оформить акт выполненных работ, поэтому запись отклоняется. Заполните ИИН в профиле — проверка занимает до 10 минут.",
+                                bodyKz: "ЖСН болмаса, орындалған жұмыстар актісін ресімдеу мүмкін емес, сондықтан жазылу қабылданбайды. Профильде ЖСН-ді толтырыңыз — тексеру 10 минутқа дейін уақыт алады.",
+                                action: {
+                                    kind: "OPEN_SCREEN",
+                                    screen: "profile.main",
+                                    labelRu: "Заполнить ИИН",
+                                    labelKz: "ЖСН-ді толтыру",
+                                },
                             },
                             {
-                                title: "Причина не указана",
-                                body: "Если партнёр отклонил запись без причины, это разбирает техподдержка вручную. Нажмите кнопку ниже — мы посмотрим вашу заявку и вернёмся с ответом.",
+                                ru: "Причина не указана",
+                                kz: "Себебі көрсетілмеген",
+                                bodyRu: "Если партнёр отклонил запись без причины, это разбирает техподдержка вручную. Нажмите кнопку ниже — мы посмотрим вашу заявку и вернёмся с ответом.",
+                                bodyKz: "Серіктес себепсіз бас тартса, мұны техқолдау қолмен қарайды. Төмендегі түймені басыңыз — өтінішіңізді қарап, жауап береміз.",
                                 action: { kind: "ESCALATE", category: "executor" },
                             },
                         ],
                     },
                     {
-                        title: "Смена пропала из списка",
-                        body: "Смена исчезает из каталога, когда партнёр набрал нужное количество исполнителей или отменил заказ. Записи на другие смены это не затрагивает — посмотрите свежий список в каталоге.",
+                        ru: "Смена пропала из списка",
+                        bodyRu: "Смена исчезает из каталога, когда партнёр набрал нужное количество исполнителей или отменил заказ. Записи на другие смены это не затрагивает — посмотрите свежий список в каталоге.",
                     },
                 ],
             },
             {
-                title: "Опоздал или не смог выйти на смену",
-                body: "Сообщите об этом как можно раньше: партнёр успеет найти замену, а вам не снизят рейтинг. По таким вопросам звоните напрямую в контакт-центр.",
+                ru: "Опоздал или не смог выйти на смену",
+                kz: "Кешіктім немесе ауысымға шыға алмадым",
+                bodyRu: "Сообщите об этом как можно раньше: партнёр успеет найти замену, а вам не снизят рейтинг. По таким вопросам звоните напрямую в контакт-центр.",
+                bodyKz: "Бұл туралы мүмкіндігінше ертерек хабарлаңыз: серіктес алмастыру табады, ал сіздің рейтингіңіз төмендемейді. Мұндай сұрақтар бойынша байланыс орталығына тікелей қоңырау шалыңыз.",
                 action: { kind: "CALL_CENTER", phone: null },
             },
             {
-                title: "Как отметиться на смене",
-                body: "Отметка делается в приложении на объекте: откройте смену и нажмите «Я на месте». Кнопка активна в радиусе 300 метров от адреса и за 30 минут до начала.",
-                action: { kind: "OPEN_LINK", url: "#", label: "Видео: отметка на смене" },
+                ru: "Как отметиться на смене",
+                kz: "Ауысымда қалай белгіленуге болады",
+                bodyRu: "Отметка делается в приложении на объекте: откройте смену и нажмите «Я на месте». Кнопка активна в радиусе 300 метров от адреса и за 30 минут до начала.",
+                bodyKz: "Белгілеу нысанда қосымша арқылы жасалады: ауысымды ашып, «Мен орындамын» түймесін басыңыз. Түйме мекенжайдан 300 метр радиуста және басталуға 30 минут қалғанда белсенді болады.",
+                action: {
+                    kind: "OPEN_LINK",
+                    url: "#",
+                    labelRu: "Видео: отметка на смене",
+                    labelKz: "Бейне: ауысымда белгілену",
+                },
             },
         ],
     },
     {
-        title: "Оплата и начисления",
+        ru: "Оплата и начисления",
+        kz: "Төлем және есептеу",
         icon: "Wallet",
         children: [
             {
-                title: "Не пришли деньги за смену",
+                ru: "Не пришли деньги за смену",
+                kz: "Ауысым үшін ақша түспеді",
                 children: [
                     {
-                        title: "Смена закрыта меньше 3 рабочих дней назад",
-                        body: "Это нормальный срок. Начисление приходит в течение 3 рабочих дней после того, как партнёр закрыл табель. Выходные и праздники в этот срок не входят.",
+                        ru: "Смена закрыта меньше 3 рабочих дней назад",
+                        kz: "Ауысым 3 жұмыс күнінен аз уақыт бұрын жабылды",
+                        bodyRu: "Это нормальный срок. Начисление приходит в течение 3 рабочих дней после того, как партнёр закрыл табель. Выходные и праздники в этот срок не входят.",
+                        bodyKz: "Бұл қалыпты мерзім. Есептеу серіктес табельді жапқаннан кейін 3 жұмыс күні ішінде түседі. Демалыс және мереке күндері бұл мерзімге кірмейді.",
                     },
                     {
-                        title: "Прошло больше 3 рабочих дней",
-                        body: "Срок вышел — нужна проверка. Нажмите кнопку ниже, укажите дату смены и объект, и мы поднимем начисление.",
+                        ru: "Прошло больше 3 рабочих дней",
+                        kz: "3 жұмыс күнінен көп уақыт өтті",
+                        bodyRu: "Срок вышел — нужна проверка. Нажмите кнопку ниже, укажите дату смены и объект, и мы поднимем начисление.",
+                        bodyKz: "Мерзім өтті — тексеру қажет. Төмендегі түймені басып, ауысым күні мен нысанды көрсетіңіз, біз есептеуді қарайміз.",
                         action: { kind: "ESCALATE", category: "executor" },
                     },
                 ],
             },
             {
-                title: "Начислили меньше, чем ожидал",
-                body: "Сумма считается по фактическим часам из табеля и тарифу смены. Если в табеле часы указаны неверно, это исправляет техподдержка вместе с партнёром.",
+                ru: "Начислили меньше, чем ожидал",
+                kz: "Күткеннен аз есептелді",
+                bodyRu: "Сумма считается по фактическим часам из табеля и тарифу смены. Если в табеле часы указаны неверно, это исправляет техподдержка вместе с партнёром.",
+                bodyKz: "Сома табельдегі нақты сағаттар мен ауысым тарифі бойынша есептеледі. Табельде сағаттар қате көрсетілсе, оны техқолдау серіктеспен бірге түзетеді.",
                 action: { kind: "ESCALATE", category: "executor" },
             },
             {
-                title: "Где посмотреть историю выплат",
-                body: "Все начисления с датами и суммами лежат в профиле, в разделе «История выплат». Там же можно выгрузить справку за выбранный период.",
-                action: { kind: "OPEN_SCREEN", screen: "profile.payouts", label: "Открыть историю выплат" },
+                ru: "Где посмотреть историю выплат",
+                kz: "Төлемдер тарихын қайдан көруге болады",
+                bodyRu: "Все начисления с датами и суммами лежат в профиле, в разделе «История выплат». Там же можно выгрузить справку за выбранный период.",
+                action: {
+                    kind: "OPEN_SCREEN",
+                    screen: "profile.payouts",
+                    labelRu: "Открыть историю выплат",
+                    labelKz: "Төлемдер тарихын ашу",
+                },
             },
         ],
     },
     {
-        title: "Документы и АВР",
+        ru: "Документы и АВР",
+        kz: "Құжаттар және ОЖА",
         icon: "FileText",
         children: [
             {
-                title: "Как подписать АВР за смену",
-                body: "Акт появляется в разделе «Документы» после закрытия табеля. Откройте акт, проверьте часы и сумму, нажмите «Подписать» — придёт СМС с кодом.",
-                action: { kind: "OPEN_LINK", url: "#", label: "Инструкция по подписанию АВР" },
+                ru: "Как подписать АВР за смену",
+                kz: "Ауысым бойынша ОЖА-ға қалай қол қою керек",
+                bodyRu: "Акт появляется в разделе «Документы» после закрытия табеля. Откройте акт, проверьте часы и сумму, нажмите «Подписать» — придёт СМС с кодом.",
+                bodyKz: "Акт табель жабылғаннан кейін «Құжаттар» бөлімінде пайда болады. Актіні ашып, сағаттар мен соманы тексеріп, «Қол қою» түймесін басыңыз — коды бар СМС келеді.",
+                action: {
+                    kind: "OPEN_LINK",
+                    url: "#",
+                    labelRu: "Инструкция по подписанию АВР",
+                    labelKz: "ОЖА-ға қол қою нұсқаулығы",
+                },
             },
             {
-                title: "Не приходит СМС с кодом подписания",
+                ru: "Не приходит СМС с кодом подписания",
+                kz: "Қол қою коды бар СМС келмейді",
                 children: [
                     {
-                        title: "Проверить номер в профиле",
-                        body: "Код уходит на номер из профиля, а не на тот, с которого вы звоните. Убедитесь, что номер актуальный, и запросите код повторно через минуту.",
-                        action: { kind: "OPEN_SCREEN", screen: "profile.main", label: "Проверить номер" },
+                        ru: "Проверить номер в профиле",
+                        kz: "Профильдегі нөмірді тексеру",
+                        bodyRu: "Код уходит на номер из профиля, а не на тот, с которого вы звоните. Убедитесь, что номер актуальный, и запросите код повторно через минуту.",
+                        bodyKz: "Код қоңырау шалып тұрған нөмірге емес, профильдегі нөмірге жіберіледі. Нөмірдің өзекті екеніне көз жеткізіп, бір минуттан кейін кодты қайта сұратыңыз.",
+                        action: {
+                            kind: "OPEN_SCREEN",
+                            screen: "profile.main",
+                            labelRu: "Проверить номер",
+                            labelKz: "Нөмірді тексеру",
+                        },
                     },
                     {
-                        title: "Номер верный, СМС не приходит",
-                        body: "Похоже на проблему на стороне оператора связи. Передадим в техподдержку — подпишем акт альтернативным способом.",
+                        ru: "Номер верный, СМС не приходит",
+                        kz: "Нөмір дұрыс, СМС келмейді",
+                        bodyRu: "Похоже на проблему на стороне оператора связи. Передадим в техподдержку — подпишем акт альтернативным способом.",
+                        bodyKz: "Бұл байланыс операторы жағындағы мәселеге ұқсайды. Техқолдауға береміз — актіге балама тәсілмен қол қоямыз.",
                         action: { kind: "ESCALATE", category: "executor" },
                     },
                 ],
             },
             {
-                title: "Где скачать справку о доходах",
-                body: "Справка формируется за любой период в разделе «История выплат» — кнопка «Выгрузить справку». Файл приходит на почту из профиля в течение 5 минут.",
-                action: { kind: "OPEN_SCREEN", screen: "profile.payouts", label: "Выгрузить справку" },
+                ru: "Где скачать справку о доходах",
+                kz: "Табыс туралы анықтаманы қайдан жүктеуге болады",
+                bodyRu: "Справка формируется за любой период в разделе «История выплат» — кнопка «Выгрузить справку». Файл приходит на почту из профиля в течение 5 минут.",
+                action: {
+                    kind: "OPEN_SCREEN",
+                    screen: "profile.payouts",
+                    labelRu: "Выгрузить справку",
+                    labelKz: "Анықтаманы жүктеу",
+                },
             },
         ],
     },
     {
-        title: "Профиль и доступ",
+        ru: "Профиль и доступ",
+        kz: "Профиль және қолжетімділік",
         icon: "UserCog",
         children: [
             {
-                title: "Не могу войти в приложение",
+                ru: "Не могу войти в приложение",
+                kz: "Қосымшаға кіре алмаймын",
                 children: [
                     {
-                        title: "Забыл пароль",
-                        body: "Пароль восстанавливается по номеру телефона: на экране входа нажмите «Забыли пароль» и введите номер из профиля.",
-                        action: { kind: "OPEN_SCREEN", screen: "auth.reset", label: "Восстановить пароль" },
+                        ru: "Забыл пароль",
+                        kz: "Құпия сөзді ұмыттым",
+                        bodyRu: "Пароль восстанавливается по номеру телефона: на экране входа нажмите «Забыли пароль» и введите номер из профиля.",
+                        bodyKz: "Құпия сөз телефон нөмірі арқылы қалпына келтіріледі: кіру экранында «Құпия сөзді ұмыттыңыз ба» түймесін басып, профильдегі нөмірді енгізіңіз.",
+                        action: {
+                            kind: "OPEN_SCREEN",
+                            screen: "auth.reset",
+                            labelRu: "Восстановить пароль",
+                            labelKz: "Құпия сөзді қалпына келтіру",
+                        },
                     },
                     {
-                        title: "Аккаунт заблокирован",
-                        body: "Блокировка ставится вручную — чаще всего из-за неподтверждённых документов или жалобы партнёра. Разбирает только техподдержка.",
+                        ru: "Аккаунт заблокирован",
+                        kz: "Аккаунт бұғатталған",
+                        bodyRu: "Блокировка ставится вручную — чаще всего из-за неподтверждённых документов или жалобы партнёра. Разбирает только техподдержка.",
+                        bodyKz: "Бұғаттау қолмен қойылады — көбіне расталмаған құжаттарға немесе серіктестің шағымына байланысты. Мұны тек техқолдау қарайды.",
                         action: { kind: "ESCALATE", category: "executor" },
                     },
                 ],
             },
             {
-                title: "Как обновить санитарную книжку",
-                body: "Сфотографируйте разворот с отметками и загрузите в «Документы». Проверка занимает до одного рабочего дня, после неё записи на смены снова открыты.",
-                action: { kind: "OPEN_LINK", url: "#", label: "Какие страницы санкнижки нужны" },
+                ru: "Как обновить санитарную книжку",
+                kz: "Санитарлық кітапшаны қалай жаңартуға болады",
+                bodyRu: "Сфотографируйте разворот с отметками и загрузите в «Документы». Проверка занимает до одного рабочего дня, после неё записи на смены снова открыты.",
+                bodyKz: "Белгілері бар бетті суретке түсіріп, «Құжаттар» бөліміне жүктеңіз. Тексеру бір жұмыс күніне дейін уақыт алады, содан кейін ауысымдарға жазылу қайта ашылады.",
+                action: {
+                    kind: "OPEN_LINK",
+                    url: "#",
+                    labelRu: "Какие страницы санкнижки нужны",
+                    labelKz: "Санитарлық кітапшаның қай беттері қажет",
+                },
             },
             {
-                title: "Изменить номер телефона",
-                body: "Номер меняется только через техподдержку: он используется для входа и подписания актов.",
+                ru: "Изменить номер телефона",
+                kz: "Телефон нөмірін өзгерту",
+                bodyRu: "Номер меняется только через техподдержку: он используется для входа и подписания актов.",
+                bodyKz: "Нөмір тек техқолдау арқылы өзгертіледі: ол кіру және актілерге қол қою үшін қолданылады.",
                 inactive: true,
                 action: { kind: "ESCALATE", category: "executor" },
             },
@@ -318,44 +442,19 @@ const RAW_TREE: RawNode[] = [
 export const CHAT_TREE: SupportChatNode[] = buildTree(RAW_TREE);
 
 export const DEFAULT_SETTINGS: SupportChatSettings = {
-    greeting: "Здравствуйте! Подскажу по частым вопросам. Выберите тему — или позовите оператора в любой момент.",
-    fallbackText: "Не нашли свой вопрос? Опишите проблему, и её посмотрит специалист техподдержки.",
+    greetingRu: "Здравствуйте! Подскажу по частым вопросам. Выберите тему — или позовите оператора в любой момент.",
+    greetingKz: "Сәлеметсіз бе! Жиі қойылатын сұрақтар бойынша көмектесемін. Тақырыпты таңдаңыз — немесе кез келген уақытта операторды шақырыңыз.",
+    fallbackTextRu: "Не нашли свой вопрос? Опишите проблему, и её посмотрит специалист техподдержки.",
+    fallbackTextKz: "Сұрағыңызды таппадыңыз ба? Мәселені сипаттаңыз, оны техқолдау маманы қарайды.",
     contactPhone: "+7 (707) 741-89-65",
     contactEmail: "support@teos.kz",
-    btnHelped: "Спасибо, помогло",
-    btnEscalate: "Не помогло, нужен оператор",
-    btnBack: "Назад",
+    btnHelpedRu: "Спасибо, помогло",
+    btnHelpedKz: "Рахмет, көмектесті",
+    btnEscalateRu: "Не помогло, нужен оператор",
+    btnEscalateKz: "Көмектеспеді, оператор керек",
+    btnBackRu: "Назад",
+    btnBackKz: "Артқа",
 };
-
-export const CHAT_VERSIONS: SupportChatVersion[] = [
-    {
-        id: 3,
-        version: 3,
-        status: "PUBLISHED",
-        publishedAt: "2026-09-18T09:20:00Z",
-        publishedBy: "Айгуль Сериккызы",
-        nodeCount: CHAT_TREE.length,
-        snapshot: CHAT_TREE,
-    },
-    {
-        id: 2,
-        version: 2,
-        status: "ARCHIVED",
-        publishedAt: "2026-08-04T12:05:00Z",
-        publishedBy: "Айгуль Сериккызы",
-        nodeCount: 21,
-        snapshot: CHAT_TREE.slice(0, 21),
-    },
-    {
-        id: 1,
-        version: 1,
-        status: "ARCHIVED",
-        publishedAt: "2026-07-11T15:40:00Z",
-        publishedBy: "Данияр Оспанов",
-        nodeCount: 12,
-        snapshot: CHAT_TREE.slice(0, 12),
-    },
-];
 
 // ═══════════════════════════════════════════════════════════════════════
 // Обход дерева
@@ -402,10 +501,6 @@ export function descendantsOf(nodes: SupportChatNode[], id: string): SupportChat
         }
     }
     return out;
-}
-
-export function depthOf(nodes: SupportChatNode[], id: string): number {
-    return pathTo(nodes, id).length;
 }
 
 /** Обход всего дерева сверху вниз в порядке отображения. */
@@ -492,7 +587,7 @@ export function applyPatches(
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Валидация (BE-03, BE-06)
+// Валидация (BE-03)
 // ═══════════════════════════════════════════════════════════════════════
 
 export type IssueLevel = "error" | "warning";
@@ -511,12 +606,13 @@ export function validateTree(nodes: SupportChatNode[]): ValidationIssue[] {
 
     for (const node of nodes) {
         const children = nodes.filter((n) => n.parentId === node.id);
+        const name = node.titleRu || "Без заголовка";
 
         if (node.nodeType === "ANSWER" && children.length > 0) {
             issues.push({
                 level: "error",
                 nodeId: node.id,
-                message: `«${node.title}» — ответ не может иметь вложенные пункты (${children.length}).`,
+                message: `«${name}» — ответ не может иметь вложенные пункты (${children.length}).`,
             });
         }
 
@@ -524,19 +620,27 @@ export function validateTree(nodes: SupportChatNode[]): ValidationIssue[] {
             issues.push({
                 level: "error",
                 nodeId: node.id,
-                message: `«${node.title}» — меню без активных вложенных пунктов, пользователь упрётся в пустой экран.`,
+                message: `«${name}» — меню без активных вложенных пунктов, пользователь упрётся в пустой экран.`,
             });
         }
 
-        if (node.title.trim() === "") {
-            issues.push({ level: "error", nodeId: node.id, message: "Узел без заголовка." });
+        if (node.titleRu.trim() === "") {
+            issues.push({ level: "error", nodeId: node.id, message: "Узел без заголовка на русском." });
         }
 
-        if (node.nodeType === "ANSWER" && (node.body ?? "").trim() === "") {
+        if (node.nodeType === "ANSWER" && (node.bodyRu ?? "").trim() === "") {
             issues.push({
                 level: "error",
                 nodeId: node.id,
-                message: `«${node.title}» — ответ без текста.`,
+                message: `«${name}» — ответ без текста на русском.`,
+            });
+        }
+
+        if (!isTranslated(node)) {
+            issues.push({
+                level: "warning",
+                nodeId: node.id,
+                message: `«${name}» — нет казахского перевода, пользователю покажется русский текст.`,
             });
         }
 
@@ -548,7 +652,7 @@ export function validateTree(nodes: SupportChatNode[]): ValidationIssue[] {
                 issues.push({
                     level: "error",
                     nodeId: node.id,
-                    message: `«${node.title}» — цикл в дереве: узел является собственным предком.`,
+                    message: `«${name}» — цикл в дереве: узел является собственным предком.`,
                 });
                 break;
             }
@@ -565,7 +669,7 @@ export function validateTree(nodes: SupportChatNode[]): ValidationIssue[] {
             issues.push({
                 level: "warning",
                 nodeId: root.id,
-                message: `«${root.title}» — из этой ветки нельзя позвать оператора: нет ни одного действия «${ACTION_LABEL.ESCALATE}».`,
+                message: `«${root.titleRu}» — из этой ветки нельзя позвать оператора: нет ни одного действия «${ACTION_LABEL.ESCALATE}».`,
             });
         }
     }
@@ -578,138 +682,7 @@ export function countErrors(issues: ValidationIssue[]): number {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// Импорт / экспорт (BE-06)
-// ═══════════════════════════════════════════════════════════════════════
-
-/**
- * Формат выгрузки — snake_case, как колонки в БД, чтобы файл можно было
- * отдать бэкенду без переименований.
- */
-interface ExportNode {
-    id: string;
-    parent_id: string | null;
-    node_type: NodeType;
-    sort_order: number;
-    is_active: boolean;
-    title_ru: string;
-    body_ru: string | null;
-    icon: string | null;
-    action_type: ActionType;
-    action_payload: ActionPayload | null;
-}
-
-export interface ExportBundle {
-    exported_at: string;
-    settings: SupportChatSettings;
-    nodes: ExportNode[];
-}
-
-export function exportTree(nodes: SupportChatNode[], settings: SupportChatSettings): ExportBundle {
-    return {
-        exported_at: TREE_NOW,
-        settings,
-        nodes: nodes
-            .slice()
-            .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((n) => ({
-                id: n.id,
-                parent_id: n.parentId,
-                node_type: n.nodeType,
-                sort_order: n.sortOrder,
-                is_active: n.isActive,
-                title_ru: n.title,
-                body_ru: n.body,
-                icon: n.icon,
-                action_type: n.actionType,
-                action_payload: n.actionPayload,
-            })),
-    };
-}
-
-export type ImportResult =
-    | { ok: true; nodes: SupportChatNode[]; settings: SupportChatSettings }
-    | { ok: false; errors: string[] };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/** Разбор выгрузки с той же валидацией, что в обычном CRUD. */
-export function importTree(rawJson: string, fallbackSettings: SupportChatSettings): ImportResult {
-    let parsed: unknown;
-    try {
-        parsed = JSON.parse(rawJson);
-    } catch {
-        return { ok: false, errors: ["Не удалось разобрать JSON — проверьте синтаксис."] };
-    }
-
-    if (!isRecord(parsed) || !Array.isArray(parsed.nodes)) {
-        return { ok: false, errors: ["Ожидается объект с массивом «nodes»."] };
-    }
-
-    const errors: string[] = [];
-    const nodes: SupportChatNode[] = [];
-
-    parsed.nodes.forEach((raw: unknown, i: number) => {
-        if (!isRecord(raw)) {
-            errors.push(`Элемент ${i + 1}: ожидается объект.`);
-            return;
-        }
-        const id = typeof raw.id === "string" ? raw.id : null;
-        const title = typeof raw.title_ru === "string" ? raw.title_ru : null;
-        const nodeType = raw.node_type === "MENU" || raw.node_type === "ANSWER" ? raw.node_type : null;
-        if (!id) errors.push(`Элемент ${i + 1}: отсутствует «id».`);
-        if (title === null) errors.push(`Элемент ${i + 1}: отсутствует «title_ru».`);
-        if (!nodeType) errors.push(`Элемент ${i + 1}: «node_type» должен быть MENU или ANSWER.`);
-        if (!id || title === null || !nodeType) return;
-
-        const actionType =
-            typeof raw.action_type === "string" && raw.action_type in ACTION_LABEL
-                ? (raw.action_type as ActionType)
-                : "NONE";
-
-        nodes.push({
-            id,
-            parentId: typeof raw.parent_id === "string" ? raw.parent_id : null,
-            nodeType,
-            sortOrder: typeof raw.sort_order === "number" ? raw.sort_order : 0,
-            isActive: raw.is_active !== false,
-            title,
-            body: typeof raw.body_ru === "string" ? raw.body_ru : null,
-            icon: typeof raw.icon === "string" ? raw.icon : null,
-            actionType,
-            actionPayload: isRecord(raw.action_payload)
-                ? (raw.action_payload as unknown as ActionPayload)
-                : { kind: "NONE" },
-            updatedBy: "Импорт",
-            updatedAt: TREE_NOW,
-        });
-    });
-
-    if (errors.length > 0) return { ok: false, errors };
-
-    const ids = new Set(nodes.map((n) => n.id));
-    for (const node of nodes) {
-        if (node.parentId && !ids.has(node.parentId)) {
-            errors.push(`«${node.title}»: родитель «${node.parentId}» отсутствует в выгрузке.`);
-        }
-    }
-    if (errors.length > 0) return { ok: false, errors };
-
-    const structural = validateTree(nodes).filter((i) => i.level === "error");
-    if (structural.length > 0) {
-        return { ok: false, errors: structural.map((i) => i.message) };
-    }
-
-    const settings = isRecord(parsed.settings)
-        ? { ...fallbackSettings, ...(parsed.settings as Partial<SupportChatSettings>) }
-        : fallbackSettings;
-
-    return { ok: true, nodes, settings };
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// Новый узел
+// Новый узел и подписи действий
 // ═══════════════════════════════════════════════════════════════════════
 
 export function makeNode(
@@ -723,8 +696,10 @@ export function makeNode(
         nodeType: "ANSWER",
         sortOrder,
         isActive: true,
-        title: "Новый пункт",
-        body: "",
+        titleRu: "Новый пункт",
+        titleKz: "",
+        bodyRu: "",
+        bodyKz: "",
         icon: null,
         actionType: "NONE",
         actionPayload: { kind: "NONE" },
@@ -733,19 +708,40 @@ export function makeNode(
     };
 }
 
-export function defaultPayload(type: ActionType, settings: SupportChatSettings): ActionPayload {
+export function defaultPayload(type: ActionType): ActionPayload {
     switch (type) {
         case "ESCALATE":
             return { kind: "ESCALATE", category: "executor" };
         case "OPEN_LINK":
-            return { kind: "OPEN_LINK", url: "", label: "Открыть инструкцию" };
+            return { kind: "OPEN_LINK", url: "", labelRu: "Открыть инструкцию", labelKz: "" };
         case "OPEN_SCREEN":
-            return { kind: "OPEN_SCREEN", screen: APP_SCREENS[0].value, label: "Перейти" };
+            return { kind: "OPEN_SCREEN", screen: APP_SCREENS[0].value, labelRu: "Перейти", labelKz: "" };
         case "CALL_CENTER":
             return { kind: "CALL_CENTER", phone: null };
         default:
-            void settings;
             return { kind: "NONE" };
+    }
+}
+
+/** Подпись кнопки действия под автоответом. */
+export function actionLabel(
+    payload: ActionPayload | null,
+    settings: SupportChatSettings,
+    lang: Lang = "ru",
+): string {
+    if (!payload) return "";
+    switch (payload.kind) {
+        case "ESCALATE":
+            return lang === "kz"
+                ? settings.btnEscalateKz || settings.btnEscalateRu
+                : settings.btnEscalateRu;
+        case "OPEN_LINK":
+        case "OPEN_SCREEN":
+            return lang === "kz" ? payload.labelKz || payload.labelRu : payload.labelRu;
+        case "CALL_CENTER":
+            return `${lang === "kz" ? "Қоңырау шалу" : "Позвонить"} ${payload.phone ?? settings.contactPhone}`;
+        default:
+            return "";
     }
 }
 
@@ -753,13 +749,13 @@ export function defaultPayload(type: ActionType, settings: SupportChatSettings):
 // Поиск по заголовкам — чтобы моки не зависели от порядковых uuid
 // ═══════════════════════════════════════════════════════════════════════
 
-/** Спускается по дереву по цепочке заголовков и возвращает id каждого шага. */
+/** Спускается по дереву по цепочке русских заголовков и возвращает id каждого шага. */
 export function findPathByTitles(nodes: SupportChatNode[], titles: string[]): string[] {
     const ids: string[] = [];
     let parentId: string | null = null;
     for (const title of titles) {
         const match: SupportChatNode | undefined = childrenOf(nodes, parentId, true).find(
-            (n) => n.title === title,
+            (n) => n.titleRu === title,
         );
         if (!match) return ids;
         ids.push(match.id);
@@ -777,19 +773,3 @@ export const DEMO_TREE_PATH: string[] = findPathByTitles(CHAT_TREE, [
     "Не пришли деньги за смену",
     "Прошло больше 3 рабочих дней",
 ]);
-
-/** Подпись кнопки действия под автоответом. */
-export function actionLabel(payload: ActionPayload | null, settings: SupportChatSettings): string {
-    if (!payload) return "";
-    switch (payload.kind) {
-        case "ESCALATE":
-            return settings.btnEscalate;
-        case "OPEN_LINK":
-        case "OPEN_SCREEN":
-            return payload.label;
-        case "CALL_CENTER":
-            return `Позвонить ${payload.phone ?? settings.contactPhone}`;
-        default:
-            return "";
-    }
-}

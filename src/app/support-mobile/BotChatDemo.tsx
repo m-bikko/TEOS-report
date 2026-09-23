@@ -56,7 +56,7 @@ function buildMessages(path: string[], outcome: Outcome): ChatMessage[] {
                 ticketId: 0,
                 author: "bot",
                 authorName: BOT_AUTHOR_NAME,
-                text: parent.body ?? "",
+                text: parent.bodyRu ?? "",
                 timestamp: stamp(step++),
                 kind: "answer",
                 nodeId: parent.id,
@@ -79,11 +79,11 @@ function buildMessages(path: string[], outcome: Outcome): ChatMessage[] {
             ticketId: 0,
             author: "bot",
             authorName: BOT_AUTHOR_NAME,
-            text: parent ? `Уточните вопрос по теме «${parent.title}»:` : DEFAULT_SETTINGS.greeting,
+            text: parent ? `Уточните вопрос по теме «${parent.titleRu}»:` : DEFAULT_SETTINGS.greetingRu,
             timestamp: stamp(step++),
             kind: "menu",
             nodeId: parent?.id,
-            options: options.map((n) => ({ nodeId: n.id, title: n.title, icon: n.icon })),
+            options: options.map((n) => ({ nodeId: n.id, title: n.titleRu, icon: n.icon })),
         });
 
         const picked = findNode(CHAT_TREE, levels[i + 1] ?? null);
@@ -93,7 +93,7 @@ function buildMessages(path: string[], outcome: Outcome): ChatMessage[] {
                 ticketId: 0,
                 author: "user",
                 authorName: USER_NAME,
-                text: picked.title,
+                text: picked.titleRu,
                 timestamp: stamp(step++),
                 pickedNodeId: picked.id,
             });
@@ -106,7 +106,7 @@ function buildMessages(path: string[], outcome: Outcome): ChatMessage[] {
             ticketId: 0,
             author: "user",
             authorName: USER_NAME,
-            text: DEFAULT_SETTINGS.btnHelped,
+            text: DEFAULT_SETTINGS.btnHelpedRu,
             timestamp: stamp(step++),
         });
     }
@@ -117,7 +117,7 @@ function buildMessages(path: string[], outcome: Outcome): ChatMessage[] {
             ticketId: 0,
             author: "user",
             authorName: USER_NAME,
-            text: DEFAULT_SETTINGS.btnEscalate,
+            text: DEFAULT_SETTINGS.btnEscalateRu,
             timestamp: stamp(step++),
         });
         messages.push({
@@ -195,7 +195,7 @@ export function BotChatDemo() {
                     {crumbs.map((c, i) => (
                         <span key={c.id} className="flex items-center gap-1">
                             {i > 0 && <ChevronRight className="h-2.5 w-2.5 text-neutral-300" />}
-                            <span className="text-[9px] text-neutral-500">{c.title}</span>
+                            <span className="text-[9px] text-neutral-500">{c.titleRu}</span>
                         </span>
                     ))}
                 </div>

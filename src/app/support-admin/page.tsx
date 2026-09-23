@@ -518,7 +518,7 @@ function AdminChatModal({ ticket }: { ticket: Ticket }) {
                                                     : "text-muted-foreground"
                                             }
                                         >
-                                            {node.title}
+                                            {node.titleRu}
                                         </span>
                                     </div>
                                 ),

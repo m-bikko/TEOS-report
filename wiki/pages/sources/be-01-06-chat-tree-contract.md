@@ -3,7 +3,7 @@ title: Контракт бэкенда по дереву чата (BE-01…BE-06
 type: source
 tags: [support, backend, contract]
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-09-23
 sources: [docs/SUPPORT_CHAT_TREE_GUIDE.md, docs/superpowers/specs/2026-09-22-support-chat-tree-design.md]
 ---
 
@@ -30,7 +30,13 @@ sources: [docs/SUPPORT_CHAT_TREE_GUIDE.md, docs/superpowers/specs/2026-09-22-sup
 
 ## Чего на стенде нет
 
-Полей `title_kz` / `body_kz`: демо одноязычное по решению заказчика.
+- **BE-06** — вкладку импорта/экспорта убрали 23.09.2026; формат выгрузки остался
+  в гайде `docs/SUPPORT_CHAT_TREE_GUIDE.md`, задача бэкенда в силе.
+- **Список версий и откат** из BE-01 — на странице не показаны, в шапке видно только
+  состояние текущего черновика.
+
+Двуязычные поля `title_kz` / `body_kz` на стенде есть: сначала демо сделали одноязычным,
+23.09.2026 второй язык вернули.
 
 ## См. также
 

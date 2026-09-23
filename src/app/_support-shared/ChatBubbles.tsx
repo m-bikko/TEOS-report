@@ -131,7 +131,7 @@ export function AnswerControls({
                     }`}
                 >
                     <ThumbsUp className="h-3 w-3 shrink-0" />
-                    {settings.btnHelped}
+                    {settings.btnHelpedRu}
                 </button>
                 {canEscalate && (
                     <button
@@ -142,7 +142,7 @@ export function AnswerControls({
                         }`}
                     >
                         <LifeBuoy className="h-3 w-3 shrink-0" />
-                        {settings.btnEscalate}
+                        {settings.btnEscalateRu}
                     </button>
                 )}
             </div>

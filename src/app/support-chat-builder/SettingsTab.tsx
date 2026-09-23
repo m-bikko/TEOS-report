@@ -1,27 +1,52 @@
 "use client";
 
-/** Вкладка «Настройки» — форма support_chat_settings (BE-05). */
+/** Вкладка «Настройки» — форма support_chat_settings (BE-05), тексты парами ru/kz. */
 
+import { Phone, Mail } from "lucide-react";
 import type { SupportChatSettings } from "../_support-shared/chatTree";
+import { Field, LangPair, TextArea, TextInput } from "../_support-shared/brand";
 
-const FIELDS: { key: keyof SupportChatSettings; label: string; hint: string; multiline?: boolean }[] = [
+interface PairField {
+    ru: keyof SupportChatSettings;
+    kz: keyof SupportChatSettings;
+    label: string;
+    hint: string;
+    multiline?: boolean;
+}
+
+const PAIRS: PairField[] = [
     {
-        key: "greeting",
+        ru: "greetingRu",
+        kz: "greetingKz",
         label: "Приветствие помощника",
         hint: "Первое сообщение, с которого начинается любое обращение.",
         multiline: true,
     },
     {
-        key: "fallbackText",
+        ru: "fallbackTextRu",
+        kz: "fallbackTextKz",
         label: "Текст, когда ветка не нашлась",
         hint: "Показывается перед формой обращения вручную.",
         multiline: true,
     },
-    { key: "contactPhone", label: "Телефон контакт-центра", hint: "Подставляется в действие «Позвонить»." },
-    { key: "contactEmail", label: "Почта поддержки", hint: "Показывается в карточке обращения." },
-    { key: "btnHelped", label: "Кнопка «ответ помог»", hint: "Закрывает обращение без оператора." },
-    { key: "btnEscalate", label: "Кнопка вызова оператора", hint: "Передаёт тред живой техподдержке." },
-    { key: "btnBack", label: "Кнопка возврата на уровень выше", hint: "Подпись в шапке чата." },
+    {
+        ru: "btnHelpedRu",
+        kz: "btnHelpedKz",
+        label: "Кнопка «ответ помог»",
+        hint: "Закрывает обращение без оператора.",
+    },
+    {
+        ru: "btnEscalateRu",
+        kz: "btnEscalateKz",
+        label: "Кнопка вызова оператора",
+        hint: "Передаёт тред живой техподдержке.",
+    },
+    {
+        ru: "btnBackRu",
+        kz: "btnBackKz",
+        label: "Кнопка возврата на уровень выше",
+        hint: "Подпись в шапке чата.",
+    },
 ];
 
 export function SettingsTab({
@@ -32,37 +57,79 @@ export function SettingsTab({
     onChange: (patch: Partial<SupportChatSettings>) => void;
 }) {
     return (
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-            <div className="max-w-2xl space-y-4">
+        <div className="@container flex-1 overflow-y-auto bg-white px-6 py-6">
+            <div className="max-w-4xl space-y-6">
                 <div>
-                    <h2 className="text-sm font-semibold">Настройки чата</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <h2 className="text-[17px] font-bold text-[#222222]">Настройки чата</h2>
+                    <p className="mt-0.5 text-[13px] text-[#8a9099]">
                         Общие для всего дерева тексты. Публикуются вместе с версией.
                     </p>
                 </div>
 
-                {FIELDS.map((f) => (
-                    <div key={f.key}>
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5 font-medium">
-                            {f.label}
-                        </div>
-                        {f.multiline ? (
-                            <textarea
-                                rows={3}
-                                value={settings[f.key]}
-                                onChange={(e) => onChange({ [f.key]: e.target.value })}
-                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs leading-relaxed resize-y"
-                            />
-                        ) : (
-                            <input
-                                value={settings[f.key]}
-                                onChange={(e) => onChange({ [f.key]: e.target.value })}
-                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs"
-                            />
-                        )}
-                        <div className="text-[10px] text-muted-foreground mt-1">{f.hint}</div>
-                    </div>
+                {PAIRS.map((f) => (
+                    <LangPair
+                        key={f.ru}
+                        label={f.label}
+                        hint={f.hint}
+                        ruFilled={String(settings[f.ru]).trim() !== ""}
+                        kzFilled={String(settings[f.kz]).trim() !== ""}
+                        ru={
+                            f.multiline ? (
+                                <TextArea
+                                    rows={3}
+                                    value={String(settings[f.ru])}
+                                    onChange={(e) => onChange({ [f.ru]: e.target.value })}
+                                />
+                            ) : (
+                                <TextInput
+                                    value={String(settings[f.ru])}
+                                    onChange={(e) => onChange({ [f.ru]: e.target.value })}
+                                />
+                            )
+                        }
+                        kz={
+                            f.multiline ? (
+                                <TextArea
+                                    rows={3}
+                                    value={String(settings[f.kz])}
+                                    onChange={(e) => onChange({ [f.kz]: e.target.value })}
+                                />
+                            ) : (
+                                <TextInput
+                                    value={String(settings[f.kz])}
+                                    onChange={(e) => onChange({ [f.kz]: e.target.value })}
+                                />
+                            )
+                        }
+                    />
                 ))}
+
+                <div className="grid gap-4 border-t border-[#e6e8ec] pt-6 @2xl:grid-cols-2">
+                    <Field
+                        label="Телефон контакт-центра"
+                        hint="Подставляется в действие «Позвонить». Язык не влияет."
+                    >
+                        <div className="relative">
+                            <Phone className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a9099]" />
+                            <TextInput
+                                value={settings.contactPhone}
+                                onChange={(e) => onChange({ contactPhone: e.target.value })}
+                                className="pl-10"
+                            />
+                        </div>
+                    </Field>
+
+                    <Field label="Почта поддержки" hint="Показывается в карточке обращения.">
+                        <div className="relative">
+                            <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8a9099]" />
+                            <TextInput
+                                value={settings.contactEmail}
+                                onChange={(e) => onChange({ contactEmail: e.target.value })}
+                                className="pl-10"
+                            />
+                        </div>
+                    </Field>
+                </div>
             </div>
         </div>
     );

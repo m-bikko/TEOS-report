@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Левая колонка конструктора: дерево-черновик.
+ * Левая колонка конструктора: дерево-черновик в стилистике web-ERP.
  *
  * Перетаскивание — на нативном HTML5 drag-and-drop, без новых зависимостей.
  * Зоны сброса внутри строки: верхние 25% — вставить выше, нижние 25% — ниже,
@@ -14,8 +14,6 @@ import {
     ChevronDown,
     ChevronRight,
     CornerDownRight,
-    Copy,
-    Trash2,
     Eye,
     EyeOff,
     Plus,
@@ -30,10 +28,12 @@ import {
 import {
     childrenOf,
     flattenVisible,
+    isTranslated,
     type SupportChatNode,
     type ValidationIssue,
 } from "../_support-shared/chatTree";
 import { NodeIcon } from "../_support-shared/icons";
+import { Button } from "../_support-shared/brand";
 
 type DropZone = "before" | "after" | "inside";
 
@@ -46,8 +46,6 @@ interface Props {
     onToggleExpand: (id: string) => void;
     onMove: (nodeId: string, newParentId: string | null, newIndex: number) => void;
     onAddChild: (parentId: string | null) => void;
-    onDuplicate: (id: string) => void;
-    onDelete: (id: string) => void;
     onToggleActive: (id: string) => void;
     onNudge: (id: string, direction: -1 | 1) => void;
 }
@@ -61,8 +59,6 @@ export function TreePanel({
     onToggleExpand,
     onMove,
     onAddChild,
-    onDuplicate,
-    onDelete,
     onToggleActive,
     onNudge,
 }: Props) {
@@ -77,6 +73,8 @@ export function TreePanel({
         list.push(issue);
         issueByNode.set(issue.nodeId, list);
     }
+
+    const untranslated = nodes.filter((n) => !isTranslated(n)).length;
 
     const zoneFromEvent = (e: React.DragEvent<HTMLDivElement>): DropZone => {
         const rect = e.currentTarget.getBoundingClientRect();
@@ -104,22 +102,21 @@ export function TreePanel({
     };
 
     return (
-        <div className="flex flex-col h-full border-r border-border bg-card">
-            <div className="px-3 py-2.5 border-b border-border flex items-center justify-between">
-                <div>
-                    <div className="text-xs font-semibold">Дерево частых вопросов</div>
-                    <div className="text-[10px] text-muted-foreground">
-                        {nodes.length} узлов · перетаскиванием меняется вложенность
+        <div className="flex h-full flex-col border-r border-[#e6e8ec] bg-white">
+            <div className="flex items-center justify-between gap-2 border-b border-[#e6e8ec] px-4 py-3">
+                <div className="min-w-0">
+                    <div className="text-[13px] font-bold text-[#222222]">Дерево вопросов</div>
+                    <div className="text-[11px] text-[#8a9099]">
+                        {nodes.length} узлов
+                        {untranslated > 0 && (
+                            <span className="text-[#b56c00]"> · {untranslated} без перевода</span>
+                        )}
                     </div>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => onAddChild(null)}
-                    className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[10px] font-medium hover:bg-muted"
-                >
-                    <Plus className="h-3 w-3" />
+                <Button variant="outline" size="sm" onClick={() => onAddChild(null)}>
+                    <Plus className="h-3.5 w-3.5" />
                     Раздел
-                </button>
+                </Button>
             </div>
 
             <div
@@ -140,8 +137,8 @@ export function TreePanel({
                     const isSelected = node.id === selectedId;
                     const nodeIssues = issueByNode.get(node.id) ?? [];
                     const hasError = nodeIssues.some((i) => i.level === "error");
-                    const hasWarning = nodeIssues.some((i) => i.level === "warning");
                     const isDropTarget = dropTarget?.id === node.id;
+                    const translated = isTranslated(node);
 
                     return (
                         <div
@@ -170,25 +167,23 @@ export function TreePanel({
                                 handleDrop(node, zoneFromEvent(e));
                             }}
                             onClick={() => onSelect(node.id)}
-                            className={`group relative flex items-center gap-1 pr-2 py-1.5 cursor-pointer border-l-2 transition-colors ${
-                                isSelected
-                                    ? "bg-primary/10 border-primary"
-                                    : "border-transparent hover:bg-muted/60"
+                            className={`group relative mx-2 flex cursor-pointer items-center gap-1.5 rounded-lg py-2 pr-2 transition-colors ${
+                                isSelected ? "bg-[#e8eefc]" : "hover:bg-[#f6f7f9]"
                             } ${dragId === node.id ? "opacity-40" : ""} ${
                                 isDropTarget && dropTarget?.zone === "inside"
-                                    ? "ring-1 ring-inset ring-primary rounded-sm"
+                                    ? "ring-1 ring-inset ring-[#3563e9]"
                                     : ""
                             }`}
-                            style={{ paddingLeft: 6 + depth * 14 }}
+                            style={{ paddingLeft: 8 + depth * 14 }}
                         >
                             {isDropTarget && dropTarget?.zone === "before" && (
-                                <div className="absolute left-0 right-0 top-0 h-0.5 bg-primary" />
+                                <div className="absolute inset-x-0 top-0 h-0.5 rounded bg-[#3563e9]" />
                             )}
                             {isDropTarget && dropTarget?.zone === "after" && (
-                                <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-primary" />
+                                <div className="absolute inset-x-0 bottom-0 h-0.5 rounded bg-[#3563e9]" />
                             )}
 
-                            <GripVertical className="h-3 w-3 text-muted-foreground/40 shrink-0 cursor-grab" />
+                            <GripVertical className="h-3.5 w-3.5 shrink-0 cursor-grab text-[#c3c8cf]" />
 
                             {kids.length > 0 ? (
                                 <button
@@ -198,46 +193,52 @@ export function TreePanel({
                                         onToggleExpand(node.id);
                                     }}
                                     className="shrink-0"
+                                    aria-label={expanded.has(node.id) ? "Свернуть" : "Развернуть"}
                                 >
                                     {expanded.has(node.id) ? (
-                                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                                        <ChevronDown className="h-3.5 w-3.5 text-[#8a9099]" />
                                     ) : (
-                                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                        <ChevronRight className="h-3.5 w-3.5 text-[#8a9099]" />
                                     )}
                                 </button>
                             ) : (
-                                <span className="w-3 shrink-0" />
+                                <span className="w-3.5 shrink-0" />
                             )}
 
                             {node.nodeType === "MENU" ? (
-                                <MessagesSquare className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                                <MessagesSquare className="h-4 w-4 shrink-0 text-[#3563e9]" />
                             ) : (
-                                <MessageSquareText className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                <MessageSquareText className="h-4 w-4 shrink-0 text-[#07bb4f]" />
                             )}
 
                             {node.icon && (
-                                <NodeIcon name={node.icon} className="h-3 w-3 text-muted-foreground shrink-0" />
+                                <NodeIcon name={node.icon} className="h-3.5 w-3.5 shrink-0 text-[#8a9099]" />
                             )}
 
                             <span
-                                className={`flex-1 text-[11px] truncate ${
-                                    node.isActive ? "" : "text-muted-foreground line-through"
-                                } ${isSelected ? "font-medium" : ""}`}
+                                className={`flex-1 truncate text-[12.5px] ${
+                                    node.isActive ? "text-[#222222]" : "text-[#a8aeb6] line-through"
+                                } ${isSelected ? "font-semibold" : ""}`}
                             >
-                                {node.title || "Без заголовка"}
+                                {node.titleRu || "Без заголовка"}
                             </span>
 
+                            {!translated && (
+                                <span
+                                    title="Нет казахского перевода"
+                                    className="shrink-0 rounded bg-[#fff0db] px-1 text-[9px] font-bold text-[#b56c00]"
+                                >
+                                    KZ
+                                </span>
+                            )}
                             {node.actionType === "ESCALATE" && (
-                                <span className="text-[8px] px-1 py-px rounded bg-blue-100 text-blue-700 font-medium shrink-0">
+                                <span className="shrink-0 rounded bg-[#e8eefc] px-1.5 py-px text-[9px] font-semibold text-[#3563e9]">
                                     оператор
                                 </span>
                             )}
-                            {hasError && <AlertCircle className="h-3 w-3 text-red-500 shrink-0" />}
-                            {!hasError && hasWarning && (
-                                <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
-                            )}
+                            {hasError && <AlertCircle className="h-3.5 w-3.5 shrink-0 text-[#ec2d30]" />}
 
-                            <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
+                            <div className="hidden shrink-0 items-center gap-0.5 group-hover:flex">
                                 <IconBtn title="Выше" onClick={() => onNudge(node.id, -1)}>
                                     <ArrowUp className="h-3 w-3" />
                                 </IconBtn>
@@ -247,11 +248,8 @@ export function TreePanel({
                                 <IconBtn title="Вложенный пункт" onClick={() => onAddChild(node.id)}>
                                     <CornerDownRight className="h-3 w-3" />
                                 </IconBtn>
-                                <IconBtn title="Дублировать" onClick={() => onDuplicate(node.id)}>
-                                    <Copy className="h-3 w-3" />
-                                </IconBtn>
                                 <IconBtn
-                                    title={node.isActive ? "Выключить" : "Включить"}
+                                    title={node.isActive ? "Скрыть" : "Показать"}
                                     onClick={() => onToggleActive(node.id)}
                                 >
                                     {node.isActive ? (
@@ -259,9 +257,6 @@ export function TreePanel({
                                     ) : (
                                         <EyeOff className="h-3 w-3" />
                                     )}
-                                </IconBtn>
-                                <IconBtn title="Удалить" danger onClick={() => onDelete(node.id)}>
-                                    <Trash2 className="h-3 w-3" />
                                 </IconBtn>
                             </div>
                         </div>
@@ -277,12 +272,10 @@ export function TreePanel({
 function IconBtn({
     title,
     onClick,
-    danger,
     children,
 }: {
     title: string;
     onClick: () => void;
-    danger?: boolean;
     children: React.ReactNode;
 }) {
     return (
@@ -294,9 +287,7 @@ function IconBtn({
                 e.stopPropagation();
                 onClick();
             }}
-            className={`h-5 w-5 rounded flex items-center justify-center hover:bg-background ${
-                danger ? "text-red-500" : "text-muted-foreground"
-            }`}
+            className="flex h-6 w-6 items-center justify-center rounded text-[#5d646d] transition-colors hover:bg-white"
         >
             {children}
         </button>
@@ -315,19 +306,21 @@ function IssuesPanel({
 
     if (issues.length === 0) {
         return (
-            <div className="border-t border-border px-3 py-2 text-[10px] text-emerald-600 font-medium">
+            <div className="border-t border-[#e6e8ec] bg-[#dbf1e8] px-4 py-2.5 text-[12px] font-semibold text-[#07733a]">
                 Замечаний нет — дерево можно публиковать
             </div>
         );
     }
 
     return (
-        <div className="border-t border-border max-h-44 overflow-y-auto">
-            <div className="px-3 py-1.5 text-[10px] font-semibold sticky top-0 bg-card border-b border-border">
-                {errors.length > 0 && <span className="text-red-600">{errors.length} ошибок</span>}
-                {errors.length > 0 && warnings.length > 0 && <span className="text-muted-foreground"> · </span>}
+        <div className="max-h-48 overflow-y-auto border-t border-[#e6e8ec]">
+            <div className="sticky top-0 border-b border-[#e6e8ec] bg-white px-4 py-2 text-[11px] font-bold">
+                {errors.length > 0 && <span className="text-[#ec2d30]">{errors.length} ошибок</span>}
+                {errors.length > 0 && warnings.length > 0 && (
+                    <span className="text-[#c3c8cf]"> · </span>
+                )}
                 {warnings.length > 0 && (
-                    <span className="text-amber-600">{warnings.length} предупреждений</span>
+                    <span className="text-[#b56c00]">{warnings.length} предупреждений</span>
                 )}
             </div>
             {[...errors, ...warnings].map((issue, i) => (
@@ -335,14 +328,14 @@ function IssuesPanel({
                     key={i}
                     type="button"
                     onClick={() => issue.nodeId && onSelect(issue.nodeId)}
-                    className="w-full text-left px-3 py-1.5 flex items-start gap-1.5 hover:bg-muted/60"
+                    className="flex w-full items-start gap-2 px-4 py-2 text-left transition-colors hover:bg-[#f6f7f9]"
                 >
                     {issue.level === "error" ? (
-                        <AlertCircle className="h-3 w-3 text-red-500 shrink-0 mt-px" />
+                        <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0 text-[#ec2d30]" />
                     ) : (
-                        <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 mt-px" />
+                        <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-[#ff9900]" />
                     )}
-                    <span className="text-[10px] leading-snug text-muted-foreground">{issue.message}</span>
+                    <span className="text-[11.5px] leading-snug text-[#5d646d]">{issue.message}</span>
                 </button>
             ))}
         </div>
