@@ -4,7 +4,7 @@ type: entity
 tags: [support, chat, tree, model]
 created: 2026-09-22
 updated: 2026-09-23
-sources: [src/app/_support-shared/chatTree.ts, docs/SUPPORT_CHAT_TREE_GUIDE.md]
+sources: [src/app/_support-shared/chatTree.ts, src/app/_support-shared/icons.tsx, public/icons/, docs/SUPPORT_CHAT_TREE_GUIDE.md]
 ---
 
 # Дерево частых вопросов
@@ -45,6 +45,16 @@ sources: [src/app/_support-shared/chatTree.ts, docs/SUPPORT_CHAT_TREE_GUIDE.md]
 Набор не был задан постановкой — предложен на стенде, по одному значению на реальный
 элемент интерфейса. `ESCALATE` критичен: без него ветка никуда не ведёт, поэтому его
 отсутствие ловит валидация.
+
+## Иконки узлов
+
+Колонка `icon` хранит имя в PascalCase. Веб рисует его компонентом lucide, а клиенты,
+которые не собирают React, берут файл из `public/icons/nodes/` — имя переводится в
+kebab-case (`Wallet` → `wallet.svg`), путь считает `nodeIconPath()`.
+
+Пополняя список в `_support-shared/icons.tsx`, файл нужно выгрузить туда же, иначе
+мобильное приложение получит по имени из БД пустоту. Правила и способ выгрузки —
+в `public/icons/README.md`.
 
 ## Валидация
 
