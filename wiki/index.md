@@ -16,6 +16,7 @@
 
 - [[support-chat-flow]] — поток обращения: дерево → автоответ → эскалация к оператору
 - [[mock-data-strategy]] — почему стенд живёт на моках и где проходит граница с продом
+- [[tech-stack]] — стек проекта: Next.js, React Compiler, Tailwind v4, источники данных
 
 ## Sources
 
