@@ -3,7 +3,7 @@ title: Конструктор дерева чата (ERP)
 type: entity
 tags: [support, erp, builder, page]
 created: 2026-09-22
-updated: 2026-09-23
+updated: 2026-09-25
 sources: [src/app/support-chat-builder/, src/app/_support-shared/brand.tsx]
 ---
 
@@ -64,3 +64,5 @@ sources: [src/app/support-chat-builder/, src/app/_support-shared/brand.tsx]
 
 - [[support-chat-tree]] — что именно редактируется
 - [[demo-pages]] — место страницы среди остальных
+- `docs/TREE_PANEL_GUIDE.md` — инструкция по компоненту левой колонки: пропсы,
+  значение каждого бейджа, зоны перетаскивания, правила валидации
