@@ -4,11 +4,13 @@
  * Боковое меню боевого ERP: белая подложка, активный пункт синий,
  * раскрытый подпункт — светло-синяя пилюля.
  *
+ * Шесть подпунктов «Заказы» — настоящие ссылки на шесть страниц раздела.
  * На десктопе колонка всегда на месте. Ниже lg превращается в выезжающую
- * панель: в боевом ERP гамбургер в шапке уже есть, но ничего не сворачивает —
+ * панель: в боевом ERP гамбургер в шапке есть, но ничего не сворачивает —
  * здесь он получает смысл.
  */
 
+import Link from "next/link";
 import {
     BarChart3,
     BookOpen,
@@ -28,32 +30,21 @@ import {
     Users,
     X,
 } from "lucide-react";
+import { STATUS_CONFIG, STATUS_ORDER, type StatusKey } from "./types";
 
 interface NavItem {
     icon: React.ReactNode;
     label: string;
-    /** Пункт раскрывается — рисуем шеврон. */
     collapsible?: boolean;
-    children?: string[];
+    /** Пункт «Заказы» — единственный с настоящими подпунктами. */
+    orders?: boolean;
 }
 
 const ICON = "h-[18px] w-[18px] shrink-0";
 
 const ITEMS: NavItem[] = [
     { icon: <ClipboardList className={ICON} />, label: "Заявки" },
-    {
-        icon: <SquareCheckBig className={ICON} />,
-        label: "Заказы",
-        collapsible: true,
-        children: [
-            "В наборе",
-            "В работе",
-            "На согласовании",
-            "В оплате",
-            "Архив",
-            "Отмененные",
-        ],
-    },
+    { icon: <SquareCheckBig className={ICON} />, label: "Заказы", collapsible: true, orders: true },
     { icon: <HandHelping className={ICON} />, label: "Франчайзи" },
     { icon: <Users className={ICON} />, label: "Партнеры" },
     { icon: <UserRound className={ICON} />, label: "Клиенты", collapsible: true },
@@ -67,10 +58,6 @@ const ITEMS: NavItem[] = [
     { icon: <Percent className={ICON} />, label: "Налоги" },
     { icon: <Headset className={ICON} />, label: "Техподдержка" },
 ];
-
-/** Активный подпункт — страница, которую мы копируем. */
-const ACTIVE_CHILD = "В наборе";
-const ACTIVE_PARENT = "Заказы";
 
 function TeosLogo() {
     return (
@@ -96,62 +83,62 @@ function TeosLogo() {
     );
 }
 
-function NavList() {
+function NavList({ active, onNavigate }: { active: StatusKey; onNavigate: () => void }) {
     return (
         <nav className="flex-1 overflow-y-auto pb-6">
-            {ITEMS.map((item) => {
-                const isActiveParent = item.label === ACTIVE_PARENT;
-                return (
-                    <div key={item.label}>
-                        <button
-                            type="button"
-                            className={`flex w-full items-center gap-3 px-5 py-[11px] text-left text-[14px] transition-colors ${
-                                isActiveParent
-                                    ? "font-medium text-[#2f6bff]"
-                                    : "text-[#4a4f57] hover:bg-[#f5f7fa]"
-                            }`}
-                        >
-                            <span className={isActiveParent ? "text-[#2f6bff]" : "text-[#6b7280]"}>
-                                {item.icon}
-                            </span>
-                            <span className="flex-1 truncate">{item.label}</span>
-                            {item.collapsible &&
-                                (isActiveParent ? (
-                                    <ChevronUp className="h-4 w-4 shrink-0 text-[#2f6bff]" />
-                                ) : (
-                                    <ChevronDown className="h-4 w-4 shrink-0 text-[#9aa1ab]" />
-                                ))}
-                        </button>
+            {ITEMS.map((item) => (
+                <div key={item.label}>
+                    <button
+                        type="button"
+                        className={`flex w-full items-center gap-3 px-5 py-[11px] text-left text-[14px] transition-colors ${
+                            item.orders
+                                ? "font-medium text-[#2f6bff]"
+                                : "text-[#4a4f57] hover:bg-[#f5f7fa]"
+                        }`}
+                    >
+                        <span className={item.orders ? "text-[#2f6bff]" : "text-[#6b7280]"}>
+                            {item.icon}
+                        </span>
+                        <span className="flex-1 truncate">{item.label}</span>
+                        {item.collapsible &&
+                            (item.orders ? (
+                                <ChevronUp className="h-4 w-4 shrink-0 text-[#2f6bff]" />
+                            ) : (
+                                <ChevronDown className="h-4 w-4 shrink-0 text-[#9aa1ab]" />
+                            ))}
+                    </button>
 
-                        {item.children && (
-                            <div className="pb-1">
-                                {item.children.map((child) => {
-                                    const active = child === ACTIVE_CHILD;
-                                    return (
-                                        <button
-                                            key={child}
-                                            type="button"
-                                            aria-current={active ? "page" : undefined}
-                                            className={`w-full px-5 py-[11px] pl-[52px] text-left text-[14px] transition-colors ${
-                                                active
-                                                    ? "bg-[#e9f1ff] font-medium text-[#2f6bff]"
-                                                    : "text-[#4a4f57] hover:bg-[#f5f7fa]"
-                                            }`}
-                                        >
-                                            {child}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                );
-            })}
+                    {item.orders && (
+                        <div className="pb-1">
+                            {STATUS_ORDER.map((key) => {
+                                const cfg = STATUS_CONFIG[key];
+                                const isActive = key === active;
+                                return (
+                                    <Link
+                                        key={key}
+                                        href={cfg.path}
+                                        onClick={onNavigate}
+                                        aria-current={isActive ? "page" : undefined}
+                                        className={`block px-5 py-[11px] pl-[52px] text-[14px] transition-colors ${
+                                            isActive
+                                                ? "bg-[#e9f1ff] font-medium text-[#2f6bff]"
+                                                : "text-[#4a4f57] hover:bg-[#f5f7fa]"
+                                        }`}
+                                    >
+                                        {cfg.navLabel}
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            ))}
         </nav>
     );
 }
 
 interface Props {
+    active: StatusKey;
     /** Выезжающая панель открыта (только ниже lg). */
     open: boolean;
     /** Колонка свёрнута гамбургером (только от lg). */
@@ -159,7 +146,7 @@ interface Props {
     onClose: () => void;
 }
 
-export function ErpNav({ open, collapsed, onClose }: Props) {
+export function ErpNav({ active, open, collapsed, onClose }: Props) {
     return (
         <>
             {/* Десктоп: колонка на месте, пока её не свернули гамбургером */}
@@ -171,7 +158,7 @@ export function ErpNav({ open, collapsed, onClose }: Props) {
                 <div className="px-5 py-[18px]">
                     <TeosLogo />
                 </div>
-                <NavList />
+                <NavList active={active} onNavigate={onClose} />
             </aside>
 
             {/* Мобильные и планшет: выезжающая панель */}
@@ -199,7 +186,7 @@ export function ErpNav({ open, collapsed, onClose }: Props) {
                         <X className="h-5 w-5" />
                     </button>
                 </div>
-                <NavList />
+                <NavList active={active} onNavigate={onClose} />
             </aside>
         </>
     );

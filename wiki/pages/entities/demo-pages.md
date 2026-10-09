@@ -56,10 +56,12 @@ Next.js App Router. Рабочие дашборды и витрины прото
 
 ## Копии боевого ERP
 
-`/shifts/recruitment` — повторение страницы «Заказы → В наборе» с teoserp.kz.
-Путь совпадает с боевым. Подробно — [[erp-recruitment-copy]].
+Шесть подразделов «Заказы» с teoserp.kz: `/shifts/recruitment`, `/in-work`,
+`/under-approval`, `/in-payment`, `/archive`, `/cancelled`. Пути совпадают
+с боевыми, переключаются подпунктами бокового меню.
+Подробно — [[erp-recruitment-copy]].
 
 ## См. также
 
 - [[mock-data-strategy]] — граница между прототипом и продом
-- [[erp-recruitment-copy]] — копия боевого экрана и её точки перестроения
+- [[erp-recruitment-copy]] — шесть статусов заказа и точки перестроения
