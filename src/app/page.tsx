@@ -91,6 +91,19 @@ const SECTIONS: Section[] = [
             },
         ],
     },
+    {
+        label: "Копии боевого ERP",
+        caption: "Повторение существующих экранов teoserp.kz с добавленной адаптивностью",
+        accent: "#ff8a5c",
+        entries: [
+            {
+                path: "/shifts/recruitment",
+                title: "Заказы · В наборе",
+                note: "Карточка заявки и состав бригады. Вёрстка, цвета и иконки по оригиналу; ниже lg меню уезжает за край, таблица исполнителей становится карточками.",
+                tag: "адаптив",
+            },
+        ],
+    },
 ];
 
 const TOTAL = SECTIONS.reduce((sum, s) => sum + s.entries.length, 0);

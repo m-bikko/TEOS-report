@@ -3,7 +3,7 @@ title: Карта страниц стенда
 type: entity
 tags: [pages, demo, navigation]
 created: 2026-09-22
-updated: 2026-09-22
+updated: 2026-10-09
 sources: [src/app/, next.config.ts]
 ---
 
@@ -54,6 +54,12 @@ Next.js App Router. Рабочие дашборды и витрины прото
 Все четыре делят `_support-shared`: модель тикетов, [[support-chat-tree]], пузыри чата,
 рамку телефона и сайдбар.
 
+## Копии боевого ERP
+
+`/shifts/recruitment` — повторение страницы «Заказы → В наборе» с teoserp.kz.
+Путь совпадает с боевым. Подробно — [[erp-recruitment-copy]].
+
 ## См. также
 
 - [[mock-data-strategy]] — граница между прототипом и продом
+- [[erp-recruitment-copy]] — копия боевого экрана и её точки перестроения
